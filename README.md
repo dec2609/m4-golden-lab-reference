@@ -41,3 +41,7 @@ Không đưa private keys, tokens, `.env`, venv/cache, Docker images, pytest tem
 Absolute Windows home locations trong tài liệu/logs đã đổi thành `<USER_HOME>`, Git Bash host path thành placeholder khi cần; nguồn gốc/raw logs giữ local. Bản redact **không là raw nguyên byte**; historical report/hash fields vẫn ghi original-byte identities. `PUBLICATION-MANIFEST.json` giữ source→publication hashes và file bị loại; `SHA256SUMS.json` kiểm bytes công bố, không self-hash. Không dùng redacted diagnostic records làm executable current gate inputs.
 
 Không chạy lại Golden Lab, Docker, scanner hoặc tests để tạo results mới trong lần publication. Chỉ kiểm inventory, hashes, JSON và liên kết. Nhóm cần review/port/test trên owner branch và same-candidate runtime riêng. Quyền đọc Private repo của các thành viên cần Thuận cấp qua GitHub; không tự mời/cấp quyền thay Thuận.
+
+## Frozen publication source
+
+Source/patch/evidence pin: **`4c35990241e96f8d1d35de7e2615e12c55cf673b`**. Handoffs/docs bổ sung ở commit delivery sau pin này, source bytes không thay đổi. Xem [handoffs](M4-TEAM-HANDOFF/) và [manifest](PUBLICATION-MANIFEST.json). Repository clone URL: `https://github.com/dec2609/m4-golden-lab-reference.git`. Thuận cần cấp quyền đọc Private repo cho từng thành viên trước khi họ clone; không có lời mời/cấp quyền tự động trong phiên publication.
