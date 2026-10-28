@@ -1,0 +1,13 @@
+{
+  "Results": [
+    {
+      "Target": "test-image",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-TEST-CRITICAL",
+          "Severity": "CRITICAL"
+        }
+      ]
+    }
+  ]
+}

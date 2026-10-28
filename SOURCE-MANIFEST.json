@@ -1,0 +1,85 @@
+{
+  "observed_utc": "2026-10-27T08:15:42.449797+00:00",
+  "refs": {
+    "main": "194704feda024e4d335758b83e003f25c5aace5e",
+    "12": "f0c9af193e1b12f32331539845093d39fe8dcf26",
+    "13": "d7b7245b5df0831c0153da9787601d5cc6d0fbbb",
+    "14": "d5b3720d2051cb09bf294dbeea0ecaa917cea70a",
+    "15": "d84be883d37445d876b4745a8c453e5fb80458c6",
+    "16": "e58eb574af1b299cd64fa9f85feed77b74ce6f18"
+  },
+  "prs": [
+    {
+      "pr": 12,
+      "sha": "f0c9af193e1b12f32331539845093d39fe8dcf26",
+      "merged": false,
+      "base": "main"
+    },
+    {
+      "pr": 13,
+      "sha": "d7b7245b5df0831c0153da9787601d5cc6d0fbbb",
+      "merged": true,
+      "base": "main"
+    },
+    {
+      "pr": 14,
+      "sha": "d5b3720d2051cb09bf294dbeea0ecaa917cea70a",
+      "merged": true,
+      "base": "main"
+    },
+    {
+      "pr": 15,
+      "sha": "d84be883d37445d876b4745a8c453e5fb80458c6",
+      "merged": false,
+      "base": "main"
+    },
+    {
+      "pr": 16,
+      "sha": "e58eb574af1b299cd64fa9f85feed77b74ce6f18",
+      "merged": false,
+      "base": "main"
+    }
+  ],
+  "assembled_checkpoint": "af25ea8f4220e032e4b739f8be204e116fb7e025",
+  "candidate_checkpoint": "53f18d8b5689a25bc03b647b54eb1a4ba0cd78ef",
+  "contract_version": "m4-contract-1.0",
+  "contract_package_commit": "5cba5d2e45f946865737dfec5762427e8a7de6e5",
+  "contract_status": "PROPOSED_REFERENCE_CHANGE",
+  "artifact_identity": null,
+  "source_runs": [
+    "source-host-run",
+    "source-final-run",
+    "frozen-source-run"
+  ],
+  "integration_resolutions": [
+    "PR13/14 included via frozen main; PR15 already ancestor of PR12; no duplicate cherry-picks",
+    "Merge PR12+main then PR16; Windows long-path partial checkout files preserved and blob-verified before completing merge (0660b02 then af25ea8)",
+    "Experimental runtime fixes are separate from contract-only package; source-only subjects have null artifact digest"
+  ],
+  "candidate_source_snapshot": "f808f084937fa036ca89560a321819ec0c09e4d0acbcba032e3fdfe2cc03f5b5",
+  "ancestry": {
+    "main": true,
+    "12": true,
+    "13": true,
+    "14": true,
+    "15": true,
+    "16": true
+  },
+  "changed_paths": [
+    ".github/workflows/verify.yml",
+    "Makefile",
+    "scripts/artifact_security.py",
+    "scripts/dependency_policy.py",
+    "scripts/m4_candidate_controls.py",
+    "scripts/m4_result_adapter.py",
+    "scripts/production_gate.py",
+    "scripts/run_m4_controls.py",
+    "scripts/run_m4_workflow.py",
+    "scripts/source_security.py",
+    "scripts/verify_registry.py",
+    "tests/reference_fixture.py",
+    "tests/test_contract_freeze.py",
+    "tests/test_m4_candidate_contract.py",
+    "tests/test_reference_gate.py"
+  ]
+}

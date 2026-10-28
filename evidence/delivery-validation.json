@@ -1,0 +1,12 @@
+{
+  "manifest_entries": 604,
+  "manifest_hash_check": "PASS",
+  "contract_markdown_links": "PASS",
+  "broken_links": [],
+  "contract_package_commit": "5cba5d2e45f946865737dfec5762427e8a7de6e5",
+  "candidate_status": "",
+  "package_status": "",
+  "secret_personal_path_pattern_scan": "PASS (limited pattern scan, not a guarantee)",
+  "matches": [],
+  "final_candidate": "53f18d8b5689a25bc03b647b54eb1a4ba0cd78ef"
+}

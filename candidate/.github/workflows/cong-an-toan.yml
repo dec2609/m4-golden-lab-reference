@@ -1,0 +1,135 @@
+# Cổng an toàn của kho đồ án nhóm.
+#
+# Nó KHÔNG chấm điểm. Nó chặn bốn thứ mà một nhóm hay để lọt và không tự thấy: chưa
+# điền thông tin nhóm, bí mật thật bị đẩy lên, hệ thống không dựng được từ kho sạch,
+# và bộ kiểm của chính nhóm không chạy.
+#
+# Ngưỡng chặn của cổng do chính nhóm biện minh trong báo cáo, đúng nguyên lý thứ bảy:
+# một cổng chặn quá nhiều thì đội phát triển sẽ tắt nó.
+
+name: Cổng an toàn
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  thong-tin-nhom:
+    name: Thông tin nhóm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Đã điền NHOM.md chưa
+        run: |
+          set -euo pipefail
+          loi=0
+          for truong in "Tên nhóm" "Đề tài"; do
+            v=$(grep -m1 "^$truong:" NHOM.md | cut -d: -f2- | tr -d '[:space:]' || true)
+            [ -z "$v" ] && { echo "::error file=NHOM.md::Chưa điền \"$truong\"."; loi=$((loi+1)); }
+          done
+          # Bảng thành viên phải có ít nhất ba dòng thật, tức dòng có mã số.
+          tv=$(grep -cE '^\| *[0-9]{6,}' NHOM.md || true)
+          if [ "$tv" -lt 3 ]; then
+            echo "::error file=NHOM.md::Mới $tv thành viên có mã số, nhóm phải từ 3 tới 5 người."
+            loi=$((loi+1))
+          fi
+          if [ "$tv" -gt 5 ]; then
+            echo "::error file=NHOM.md::$tv thành viên, quy định tối đa 5."
+            loi=$((loi+1))
+          fi
+          v=$(grep -m1 "^Đã đọc và đồng ý:" NHOM.md | cut -d: -f2- | tr -d '[:space:]' || true)
+          [ -z "$v" ] && { echo "::error file=NHOM.md::Chưa ai ký cam kết."; loi=$((loi+1)); }
+          [ "$loi" -gt 0 ] && exit 1
+          echo "NHOM.md đầy đủ, $tv thành viên."
+
+  bi-mat-lo:
+    name: Quét bí mật lộ
+    runs-on: ubuntu-latest
+    outputs:
+      GITLEAKS_STATUS: ${{ steps.gitleaks_step.outputs.GITLEAKS_STATUS }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        id: gitleaks_step
+        run: |
+          set -euo pipefail
+          curl -sSL -o gl.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz
+          echo "ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d  gl.tgz" | sha256sum -c -
+          tar xzf gl.tgz gitleaks
+          if ./gitleaks detect --source . --redact --verbose; then
+            echo "GITLEAKS_STATUS=PASS" >> $GITHUB_OUTPUT
+          else
+            echo "GITLEAKS_STATUS=FAIL" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+  dung-va-kiem:
+    name: Dựng và chạy bộ kiểm
+    runs-on: ubuntu-latest
+    needs: thong-tin-nhom
+    outputs:
+      UNIT_TEST_STATUS: ${{ steps.unit_test_status.outputs.UNIT_TEST_STATUS }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Có Makefile và compose chưa
+        id: co
+        run: |
+          if [ -f Makefile ] && [ -f docker-compose.yml ]; then
+            echo "co=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "co=false" >> "$GITHUB_OUTPUT"
+            echo "Chưa có Makefile hoặc docker-compose.yml. Bình thường trước mốc M2."
+          fi
+
+      - name: make up
+        if: steps.co.outputs.co == 'true'
+        env:
+          TZ: Asia/Ho_Chi_Minh
+          LC_ALL: C.UTF-8
+        run: make up
+
+      - name: make verify
+        if: steps.co.outputs.co == 'true'
+        env:
+          TZ: Asia/Ho_Chi_Minh
+          LC_ALL: C.UTF-8
+        run: make verify
+
+      - name: Export UNIT_TEST_STATUS
+        id: unit_test_status
+        if: always() && steps.co.outputs.co == 'true'
+        run: |
+          if [ -f bang-chung/UNIT_TEST_STATUS.txt ]; then
+            status="$(tr -d '\r\n' < bang-chung/UNIT_TEST_STATUS.txt)"
+            if [ "$status" = "UNIT_TEST_STATUS=PASS" ]; then
+              echo "UNIT_TEST_STATUS=PASS" >> "$GITHUB_OUTPUT"
+            elif [ "$status" = "UNIT_TEST_STATUS=FAIL" ]; then
+              echo "UNIT_TEST_STATUS=FAIL" >> "$GITHUB_OUTPUT"
+            else
+              echo "UNIT_TEST_STATUS không hợp lệ: $status"
+              exit 1
+            fi
+          else
+            echo "Không tìm thấy bang-chung/UNIT_TEST_STATUS.txt"
+            exit 1
+          fi
+
+      - name: Gom bằng chứng
+        if: always() && steps.co.outputs.co == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bang-chung
+          path: bang-chung/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: make down
+        if: always() && steps.co.outputs.co == 'true'
+        run: make down || true

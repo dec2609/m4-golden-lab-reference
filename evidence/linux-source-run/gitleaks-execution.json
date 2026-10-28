@@ -1,0 +1,42 @@
+{
+  "source_commit": "bfe8c1b28d22c9603dcba1ef0ae3a4f23eb5b42e",
+  "source_snapshot": "6f4155326abc0c12cd7b4da8abc8d85f96110c47b418ffa5b40b9c61edad5e73",
+  "run_id": "linux-source-run",
+  "contract_version": "m4-contract-1.0",
+  "artifact_subject": null,
+  "execution_subject": {
+    "kind": "source",
+    "source_commit": "bfe8c1b28d22c9603dcba1ef0ae3a4f23eb5b42e",
+    "source_snapshot": "6f4155326abc0c12cd7b4da8abc8d85f96110c47b418ffa5b40b9c61edad5e73"
+  },
+  "raw_exit_code": null,
+  "execution_started": false,
+  "report_sha256": null,
+  "tool": {
+    "name": "Gitleaks",
+    "version": "UNAVAILABLE"
+  },
+  "command": [
+    "/usr/local/bin/python3",
+    "/src/scripts/source_security.py",
+    "--candidate",
+    "/runs/linux-source-run/source-context.json",
+    "--run-dir",
+    "/runs/linux-source-run"
+  ],
+  "wrapper_exit_code": null,
+  "policy_exit_code": null,
+  "source_context": {
+    "scope": "FULL_HISTORY_AND_WORKTREE",
+    "head_commit": "bfe8c1b28d22c9603dcba1ef0ae3a4f23eb5b42e",
+    "dirty": true,
+    "shallow": false,
+    "raw_exit_codes": [],
+    "scanner_integrity": {
+      "name": "Gitleaks",
+      "version": "UNAVAILABLE",
+      "archive_sha256": "ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d",
+      "binary_sha256": "NONE"
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "contract",
+    "evidence_kind",
+    "source_commit",
+    "source_snapshot",
+    "run_id",
+    "archive_path",
+    "archive_sha256",
+    "manifest_digest",
+    "platform_manifest_digest",
+    "artifact_subject",
+    "config_digest",
+    "image_reference",
+    "registry_manifest_path",
+    "public_key_path",
+    "bundle_path"
+  ],
+  "properties": {
+    "contract": {
+      "const": "reference-1"
+    },
+    "evidence_kind": {
+      "const": "BUILD_EXECUTION"
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "source_snapshot": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,100}$"
+    },
+    "archive_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "archive_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "manifest_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "platform_manifest_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "artifact_subject": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "config_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "image_reference": {
+      "type": "string",
+      "pattern": "^.+@sha256:[0-9a-f]{64}$"
+    },
+    "registry_manifest_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "registry_index_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "public_key_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "bundle_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trust_status": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Canonical OCI index contexts require registry_index_path whenever index != platform; semantic validator verifies raw bytes and relation."
+}

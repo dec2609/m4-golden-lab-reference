@@ -1,0 +1,4 @@
+GITLEAKS_STATUS=FAIL
+REASON=Unknown/shallow/dirty source context
+COMMIT=bfe8c1b28d22c9603dcba1ef0ae3a4f23eb5b42e
+REPORT_HASH=NONE

@@ -1,0 +1,207 @@
+diff --git a/tests/reference_fixture.py b/tests/reference_fixture.py
+index 1e8ebd0..fd2db5a 100644
+--- a/tests/reference_fixture.py
++++ b/tests/reference_fixture.py
+@@ -7,7 +7,7 @@ from m4_result_adapter import build_result
+ def write(root,path,value):
+     p=Path(root)/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps(value),encoding='utf-8');return p
+ def fixture(root, revision='a', snapshot='b', run_id='fixture-run'):
+-    root=Path(root);root.mkdir(exist_ok=True)
++    root=Path(root);root.mkdir(exist_ok=True);run_id=root.name
+     layer=b'contract-fixture-layer'
+     config={'config':{'Labels':{'org.opencontainers.image.revision':revision*40,'orderflow.source_snapshot':snapshot*64}},'rootfs':{'type':'layers','diff_ids':['sha256:'+hashlib.sha256(layer).hexdigest()]}}
+     config_bytes=json.dumps(config).encode();config_digest='sha256:'+hashlib.sha256(config_bytes).hexdigest()
+@@ -19,17 +19,18 @@ def fixture(root, revision='a', snapshot='b', run_id='fixture-run'):
+     c={'contract':'reference-1','run_id':run_id,'source_commit':revision*40,'source_snapshot':snapshot*64,'archive_path':'candidate.tar','archive_sha256':sha(root/'candidate.tar'),'manifest_digest':manifest_digest,'platform_manifest_digest':manifest_digest,'artifact_subject':manifest_digest,'config_digest':config_digest,'image_reference':'lab.invalid/order-app@'+manifest_digest,'registry_manifest_path':manifest.name,'public_key_path':'cosign.pub','bundle_path':'bundle.json'}
+     (root/'cosign.pub').write_text('FIXTURE-NOT-A-REAL-KEY');write(root,'bundle.json',{'fixture':True})
+     reports={'GITLEAKS':[],'SBOM':{'spdxVersion':'SPDX-2.3','SPDXID':'SPDXRef-DOCUMENT','packages':[{'name':'fixture'}]},'VULNERABILITY':{'SchemaVersion':2,'ArtifactType':'container_image','ArtifactName':c['image_reference'],'Metadata':{'RepoDigests':[c['image_reference']]},'Results':[{'Target':'fixture','Vulnerabilities':[]}]},'DEPENDENCY':{'packages':[{'name':'flask','version':'3.1.0','approved':True}]},'UNIT_TEST':{'passed':1,'failed':0,'layer':'UNIT_CONTRACT'}}
++
++    from m4_result_adapter import CONTRACT_VERSION, SOURCE_CONTROLS, _execution_subject
+     for name,report in reports.items():
+         if name=='DEPENDENCY':
+-            from dependency_policy import load_policy,parse_requirements,POLICY_FILE
+-            manifest,allowlist=load_policy(POLICY_FILE)
+-            report={'packages':[{'name':n,'version':v,'approved':allowlist.get(n)==v} for n,v,_ in parse_requirements(manifest)]}
++            from dependency_policy import load_policy,parse_requirements,ROOT
++            policy=ROOT/'cau-hinh/m4/dependency-policy.yml';manifest,allowlist=load_policy(policy)
++            report={'schema_version':'1.0','status':'PASS','reason':'ALL_DIRECT_DEPENDENCIES_APPROVED','manifest':manifest.relative_to(ROOT).as_posix(),'scope':'direct','policy_sha256':sha(policy),'manifest_sha256':sha(manifest),'packages':[{'name':n,'version':v,'approved':allowlist.get(n)==v} for n,v,_ in parse_requirements(manifest)],'violations':[]}
+         stem=name.lower().replace('_','-');p=write(root,stem+'-report.json',report)
+-        if name in ('SBOM','VULNERABILITY','DEPENDENCY'):
+-            r=build_result(control_id=name,execution_status='SUCCESS',policy_verdict='PASS',reason='FIXTURE',run_id=c['run_id'],source_snapshot=c['source_snapshot'],tool_name='fixture-tool',tool_version='1.0',raw_exit_code=0,artifact_subject=c['manifest_digest'],report_path=str(p),expected_artifact=c['image_reference'],expected_report_sha256=sha(p))
+-        else:r={'schema_version':'1.0','control_id':name,'execution_status':'SUCCESS','policy_verdict':'PASS','raw_exit_code':0,'tool':{'name':'fixture-tool','version':'1.0'},'report':{'sha256':sha(p)}}
+-        r.update(source_commit=c['source_commit'],source_snapshot=c['source_snapshot'],run_id=c['run_id'],artifact_subject=c['manifest_digest'],execution_path=stem+'-execution.json');r['report']['path']=p.name
+-        e={k:c[k] for k in ('source_commit','source_snapshot','run_id')};e.update(artifact_subject=c['manifest_digest'],raw_exit_code=0,report_sha256=sha(p),command=['fixture-command'],tool=r['tool'])
+-        if name=='GITLEAKS':e.update(scope='FULL_HISTORY_AND_WORKTREE',shallow=False,head_commit=c['source_commit'],dirty=False)
++        common={k:c[k] for k in ('source_commit','source_snapshot','run_id')};common.update(contract_version=CONTRACT_VERSION,artifact_subject=None if name in SOURCE_CONTROLS else c['manifest_digest'],execution_subject=_execution_subject(c,name))
++        tool={'name':'fixture-tool','version':'1.0'}
++        r={**common,'schema_version':'1.0','control_id':name,'execution_status':'SUCCESS','policy_verdict':'PASS','raw_exit_code':0,'reason':'EXPLICIT CONTRACT FIXTURE','tool':tool,'report':{'path':p.name,'sha256':sha(p)},'execution_path':stem+'-execution.json','wrapper_exit_code':None,'policy_exit_code':None}
++        e={**common,'raw_exit_code':0,'execution_started':True,'report_sha256':sha(p),'command':['fixture-command'],'tool':tool,'wrapper_exit_code':None,'policy_exit_code':None}
++        if name=='GITLEAKS':e['source_context']={'scope':'FULL_HISTORY_AND_WORKTREE','shallow':False,'head_commit':c['source_commit'],'dirty':False,'raw_exit_codes':[0,0],'scanner_integrity':{'fixture':True}}
+         write(root,stem+'-result.json',r);write(root,stem+'-execution.json',e)
+     return c,sha(root/'cosign.pub')
+diff --git a/tests/test_contract_freeze.py b/tests/test_contract_freeze.py
+new file mode 100644
+index 0000000..e89768c
+--- /dev/null
++++ b/tests/test_contract_freeze.py
+@@ -0,0 +1,116 @@
++"""Conformance regressions from fresh audit defects. All reports here are FIXTURES."""
++import copy,json,subprocess,sys,importlib.util
++from pathlib import Path
++from unittest.mock import Mock
++import pytest
++from reference_fixture import fixture,write
++import m4_result_adapter as adapter
++from production_gate import evaluate_gate
++
++def change(run,stem,record=None,execution=None,report=None):
++    r=adapter.read(run/(stem+'-result.json'));e=adapter.read(run/(stem+'-execution.json'))
++    if record:record(r)
++    if execution:execution(e)
++    if report is not None:
++        p=run/(stem+'-report.json');p.write_text(json.dumps(report));r['report']['sha256']=e['report_sha256']=adapter.sha(p)
++    write(run,stem+'-result.json',r);write(run,stem+'-execution.json',e)
++
++@pytest.mark.parametrize('verdict',['PASS','FAIL','ERROR'])
++def test_valid_record_is_not_approval(tmp_path,verdict):
++    c,key=fixture(tmp_path)
++    if verdict=='FAIL':
++        change(tmp_path,'gitleaks',record=lambda r:r.update(policy_verdict='FAIL'),report=[{'RuleID':'FIXTURE'}])
++    if verdict=='ERROR':
++        change(tmp_path,'gitleaks',record=lambda r:r.update(policy_verdict='ERROR',execution_status='ERROR',raw_exit_code=None,report=None),execution=lambda e:e.update(raw_exit_code=None,execution_started=False,report_sha256=None))
++    assessment=adapter.validate_control(tmp_path,'GITLEAKS',c)
++    assert assessment.evidence_valid and assessment.security_approved is (verdict=='PASS')
++    with pytest.raises(TypeError):bool(assessment)
++    result,_=evaluate_gate(c,tmp_path,key,Mock(return_value=Mock(returncode=0)))
++    assert result['PRODUCTION_GATE']==('PASS' if verdict=='PASS' else 'BLOCKED')
++
++@pytest.mark.parametrize('mode',['wrong_execution_subject','missing_tool','boolean_exit','missing_execution','wrong_source','wrong_run','wrong_hash','empty_report','malformed_report'])
++def test_current_audit_negatives(tmp_path,mode):
++    c,key=fixture(tmp_path)
++    r=adapter.read(tmp_path/'gitleaks-result.json');e=adapter.read(tmp_path/'gitleaks-execution.json')
++    if mode=='wrong_execution_subject':e['execution_subject']={'kind':'source','source_commit':'f'*40,'source_snapshot':'f'*64}
++    if mode=='missing_tool':r.pop('tool');e.pop('tool')
++    if mode=='boolean_exit':r['raw_exit_code']=e['raw_exit_code']=False
++    if mode=='wrong_source':r['source_commit']='f'*40
++    if mode=='wrong_run':e['run_id']='old-run'
++    if mode=='wrong_hash':r['report']['sha256']='f'*64
++    if mode in ('empty_report','malformed_report'):
++        p=tmp_path/'gitleaks-report.json';p.write_text('' if mode=='empty_report' else '{bad');r['report']['sha256']=e['report_sha256']=adapter.sha(p)
++    write(tmp_path,'gitleaks-result.json',r);write(tmp_path,'gitleaks-execution.json',e)
++    if mode=='missing_execution':(tmp_path/'gitleaks-execution.json').unlink()
++    with pytest.raises((ValueError,OSError)):adapter.validate_control(tmp_path,'GITLEAKS',c)
++    assert evaluate_gate(c,tmp_path,key,Mock(return_value=Mock(returncode=0)))[0]['PRODUCTION_GATE']=='BLOCKED'
++
++@pytest.mark.parametrize('name',['fixture-run','previous-run','real-run'])
++def test_fixture_name_never_selects_weaker_validation(tmp_path,name):
++    run=tmp_path/name;run.mkdir();c,key=fixture(run)
++    change(run,'sbom',execution=lambda e:e.update(execution_subject={'kind':'artifact','digest':'sha256:'+'f'*64}))
++    with pytest.raises(ValueError):adapter.validate_control(run,'SBOM',c)
++
++@pytest.mark.parametrize('control',['GITLEAKS','DEPENDENCY','UNIT_TEST'])
++def test_source_only_controls_have_no_fabricated_artifact(tmp_path,control):
++    c,key=fixture(tmp_path);r=adapter.read(tmp_path/(control.lower().replace('_','-')+'-result.json'))
++    assert r['artifact_subject'] is None and r['execution_subject']['kind']=='source'
++    assert r['execution_subject']['source_commit']==c['source_commit']
++
++def test_actual_source_cli_to_actual_emitter(tmp_path,monkeypatch):
++    spec=importlib.util.spec_from_file_location('helpers',Path(__file__).with_name('test_m4_candidate_contract.py'));h=importlib.util.module_from_spec(spec);spec.loader.exec_module(h)
++    repo=h.make_checkout(tmp_path);run=tmp_path/'cli-run';run.mkdir()
++    c={'contract':'reference-1','evidence_kind':'SOURCE_EXECUTION','source_commit':subprocess.check_output(['git','rev-parse','HEAD'],cwd=repo,text=True).strip(),'source_snapshot':adapter.checkout_snapshot(repo),'run_id':run.name}
++    context=write(run,'source-context.json',c)
++    import source_security as source
++    monkeypatch.setattr(source,'ROOT',repo);monkeypatch.setattr(source,'ACTUAL_VERSION','8.18.4');monkeypatch.setattr(source,'install_and_verify_gitleaks',lambda:True)
++    def scanner(cmd,**kw):
++        Path(cmd[cmd.index('--report-path')+1]).write_text('[]');return subprocess.CompletedProcess(cmd,0,'FIXTURE SCANNER DOUBLE','')
++    monkeypatch.setattr(source,'execute_scanner',scanner);monkeypatch.setattr(sys,'argv',['source_security.py','--candidate',str(context),'--run-dir',str(run)])
++    assert source.main()==0
++    assert adapter.validate_control(run,'GITLEAKS',c,repository_root=repo).security_approved
++
++def test_workflow_calls_existing_cli_and_no_m3_or_literal_pass():
++    repo=Path(__file__).resolve().parents[1];workflow=(repo/'.github/workflows/verify.yml').read_text()
++    assert 'run_m4_workflow.py --run-dir' in workflow and 'bang-chung/m3' not in workflow and 'status: PASS' not in workflow
++    p=subprocess.run([sys.executable,'-B',str(repo/'scripts/run_m4_controls.py'),'--help'],capture_output=True,text=True)
++    assert p.returncode==0 and '--run-dir' in p.stdout and '--candidate' in p.stdout
++
++
++def test_candidate_runner_is_importable_and_make_uses_m4():
++    import scripts.m4_candidate_controls
++    make=(Path(__file__).resolve().parents[1]/'Makefile').read_text(encoding='utf-8')
++    assert 'run_m4_workflow.py --phase source' in make
++    assert 'down -v' not in make and 'python tests/test_production_gate.py' not in make
++
++
++def test_oci_archive_index_and_platform_binding(tmp_path):
++    import tarfile,io,hashlib
++    c,key=fixture(tmp_path)
++    def hashed(data):return 'sha256:'+hashlib.sha256(data).hexdigest()
++    config=json.dumps({'config':{'Labels':{'org.opencontainers.image.revision':c['source_commit'],'orderflow.source_snapshot':c['source_snapshot']}}}).encode()
++    layer=b'EXPLICIT OCI CONTRACT FIXTURE';conf=hashed(config);ld=hashed(layer)
++    manifest=json.dumps({'schemaVersion':2,'mediaType':'application/vnd.oci.image.manifest.v1+json','config':{'digest':conf},'layers':[{'digest':ld}]}).encode();pd=hashed(manifest)
++    index=json.dumps({'schemaVersion':2,'manifests':[{'digest':pd}]}).encode();ix=hashed(index)
++    with tarfile.open(tmp_path/'oci.tar','w') as t:
++        for name,b in [('index.json',json.dumps({'manifests':[{'digest':ix}]}).encode()),*[( 'blobs/sha256/'+hashed(b)[7:],b) for b in (config,layer,manifest,index)]]:
++            info=tarfile.TarInfo(name);info.size=len(b);t.addfile(info,io.BytesIO(b))
++    (tmp_path/'registry-index.json').write_bytes(index);(tmp_path/'registry-manifest.json').write_bytes(manifest)
++    c.update(archive_path='oci.tar',archive_sha256=adapter.sha(tmp_path/'oci.tar'),config_digest=conf,manifest_digest=ix,platform_manifest_digest=pd)
++    assert adapter.verify_archive(tmp_path,c)==tmp_path/'oci.tar'
++    assert adapter.verify_registry(tmp_path,c)
++    c['platform_manifest_digest']='sha256:'+'f'*64
++    with pytest.raises(ValueError):adapter.verify_archive(tmp_path,c)
++
++
++@pytest.mark.parametrize('field',['policy_sha256','manifest_sha256'])
++def test_dependency_input_hash_is_required(tmp_path,field):
++    c,key=fixture(tmp_path)
++    report=adapter.read(tmp_path/'dependency-report.json');report.pop(field)
++    change(tmp_path,'dependency',report=report)
++    with pytest.raises(ValueError):adapter.validate_control(tmp_path,'DEPENDENCY',c)
++
++@pytest.mark.parametrize('field',['wrapper_exit_code','policy_exit_code'])
++def test_required_null_fields_cannot_be_omitted(tmp_path,field):
++    c,key=fixture(tmp_path);r=adapter.read(tmp_path/'gitleaks-result.json');r.pop(field);write(tmp_path,'gitleaks-result.json',r)
++    with pytest.raises(ValueError):adapter.validate_control(tmp_path,'GITLEAKS',c)
+diff --git a/tests/test_m4_candidate_contract.py b/tests/test_m4_candidate_contract.py
+index 817bb3a..afd8a56 100644
+--- a/tests/test_m4_candidate_contract.py
++++ b/tests/test_m4_candidate_contract.py
+@@ -239,7 +239,7 @@ def test_emit_control_writes_bound_sbom_records(tmp_path):
+     assert result["report"]["sha256"] == execution["report_sha256"]
+     assert execution["raw_exit_code"] == 0
+     assert execution["command"][0] == "syft"
+-    assert validate_control(run_dir, "SBOM", context, root)
++    assert validate_control(run_dir, "SBOM", context, root).evidence_valid
+ 
+ 
+ def test_emit_control_refuses_nonzero_exit_for_pass(tmp_path):
+@@ -439,7 +439,7 @@ def test_dependency_control_accepts_external_policy_pinned_by_hash(tmp_path):
+         root,
+         dependency_policy_path=external_policy,
+         expected_dependency_policy_sha256=policy_hash,
+-    )
++    ).evidence_valid
+ 
+ def test_candidate_rejects_partial_producer_context(tmp_path):
+     root = make_checkout(tmp_path)
+diff --git a/tests/test_reference_gate.py b/tests/test_reference_gate.py
+index e10dba8..18e60af 100644
+--- a/tests/test_reference_gate.py
++++ b/tests/test_reference_gate.py
+@@ -71,14 +71,14 @@ def test_other_attack_cases(tmp_path,mode):
+     elif mode=='execution_exit2':r=read(tmp_path/'gitleaks-execution.json');r['raw_exit_code']=2;write(tmp_path,'gitleaks-execution.json',r)
+     elif mode=='path_escape':r=read(tmp_path/'gitleaks-result.json');r['report']['path']='../outside.json';write(tmp_path,'gitleaks-result.json',r)
+     elif mode.startswith('gitleaks_') and mode!='gitleaks_finding_exit0':
+-        r=read(tmp_path/'gitleaks-execution.json');r[{'gitleaks_dirty':'dirty','gitleaks_scope':'scope','gitleaks_shallow':'shallow'}[mode]]={'gitleaks_dirty':True,'gitleaks_scope':'HISTORY_ONLY','gitleaks_shallow':True}[mode];write(tmp_path,'gitleaks-execution.json',r)
++        r=read(tmp_path/'gitleaks-execution.json');r['source_context'][{'gitleaks_dirty':'dirty','gitleaks_scope':'scope','gitleaks_shallow':'shallow'}[mode]]={'gitleaks_dirty':True,'gitleaks_scope':'HISTORY_ONLY','gitleaks_shallow':True}[mode];write(tmp_path,'gitleaks-execution.json',r)
+     else:
+         stem='sbom' if mode=='sbom_empty' else 'gitleaks';p=write(tmp_path,stem+'-report.json',{} if stem=='sbom' else [{'RuleID':'fixture'}]);r=read(tmp_path/(stem+'-result.json'));e=read(tmp_path/(stem+'-execution.json'));r['report']['sha256']=sha(p);e['report_sha256']=sha(p);write(tmp_path,stem+'-result.json',r);write(tmp_path,stem+'-execution.json',e)
+     assert evaluate_gate(c,tmp_path,key,run)[0]['PRODUCTION_GATE']=='BLOCKED'
+ 
+ def test_handoff_consumes_tram_record_without_identity_rewrite(tmp_path):
+-    src=tmp_path/'source';src.mkdir();c,key=fixture(src);r=read(src/'sbom-result.json');e=read(src/'sbom-execution.json');out=tmp_path/'target'
+-    bind_result(r,e,c,src,out);assert validate_control(out,'SBOM',c)
++    src=tmp_path/'source';src.mkdir();c,key=fixture(src);r=read(src/'sbom-result.json');e=read(src/'sbom-execution.json');out=tmp_path/'target'/c['run_id']
++    bind_result(r,e,c,src,out);assert validate_control(out,'SBOM',c).security_approved
+     with pytest.raises(ValueError,match='overwrite'):bind_result(r,e,c,src,out)
+     r['run_id']='stale'
+     with pytest.raises(ValueError,match='run_id'):bind_result(r,e,c,src,out)

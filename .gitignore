@@ -1,0 +1,9 @@
+# This publication has no runtime outputs or secrets.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+node_modules/
+.venv/
+.env
+*.key
+*.pem

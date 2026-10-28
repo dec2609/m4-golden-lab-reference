@@ -1,0 +1,29 @@
+{
+  "source_sha": "f0c9af193e1b12f32331539845093d39fe8dcf26",
+  "layer": "CONTROL_LEVEL_FIXTURE_NOT_RELEASE_BYPASS",
+  "observations": [
+    {
+      "finding": "F3",
+      "case": "wrong_execution_subject",
+      "accepted": true
+    },
+    {
+      "finding": "F3",
+      "case": "missing_tool",
+      "accepted": true
+    },
+    {
+      "finding": "F3",
+      "case": "boolean_exit",
+      "accepted": true
+    },
+    {
+      "finding": "F1",
+      "error": "PRODUCER_SOURCE_COMMIT_MISMATCH"
+    },
+    {
+      "finding": "F2",
+      "error": "got an unexpected keyword argument 'scope'"
+    }
+  ]
+}

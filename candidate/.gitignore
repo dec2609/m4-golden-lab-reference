@@ -1,0 +1,25 @@
+﻿__pycache__/
+*.py[cod]
+*$py.class
+.DS_Store
+
+# Cryptographic Keys (Chỉ cho phép public key trong repo)
+*.key
+*.pem
+bang-chung/m3/artifact/keys/*.key
+bang-chung/m4/artifact/keys/*.key
+
+# Binary Archives & Bundles ở thư mục gốc
+*.tar
+order-app-candidate.tar.bundle
+
+# Gitleaks binary & local cache
+gitleaks
+gitleaks.exe
+.gitleaks/
+
+# Test cache & runtime artifacts
+.pytest_cache/
+unit-temp/
+*.junit.xml
+lifecycle.jsonl

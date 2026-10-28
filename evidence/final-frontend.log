@@ -1,0 +1,436 @@
+=== ORDERFLOW PHASE B FRONTEND VERIFICATION ===
+Generated: 2026-10-27T09:04:10.648Z
+UNIT_CONTRACT_PRESENTATION_STATUS=PASS
+Exit code: 0
+Executed: real frontend modules in Node, simulated fetch, in-memory mock stores, React server rendering.
+Server rendering is a component unit check, not browser E2E.
+INTEGRATION_STATUS=NOT_RUN
+BROWSER_E2E_STATUS=NOT_RUN
+BACKEND_POSTGRESQL_E2E_STATUS=NOT_RUN
+SECURITY_TOOLS_REGISTRY_DEPLOYMENT_ROLLBACK_STATUS=NOT_RUN
+No Docker, PostgreSQL, registry or runtime availability is inferred by this script.
+Producer schema v2, trusted ingestion and rollback restoration evidence: BLOCKED pending owner confirmation.
+Fixture PASS values are test inputs, not security verification results.
+Provenance: {"source_commit":"53f18d8b5689a25bc03b647b54eb1a4ba0cd78ef","working_tree":"","node":"v24.21.0","command":"node --test --test-concurrency=1 --test-reporter=tap tests/*.test.cjs","sha256":{"src/App.tsx":"065a7fc1f82b7b4ef4a017736798a78aaba88646140e01590b7813d54df8383c","src/assets/brand/orderflow-app-mark.png":"e1fece563cd0f56fd16128c6fcb7d6652ddb679efe742b3384c3bcf8d31d2d3f","src/assets/brand/orderflow-compact.png":"0e212d3e569c915a2d08dc3d98721457c57cd246cbb5a8f438076b35f6cb44b7","src/assets/brand/orderflow-favicon.png":"a923a4795a80917591fce09a00c781b4e79a37ac1e48fb0eee28036e93a39dff","src/assets/brand/orderflow-mark.png":"bc5ac456c495cad13fecddca4b9744b0f927dcab1b136e344297d2cc3b41c98a","src/assets/brand/orderflow-monochrome-dark.png":"6e1734f9ab7de4f4bf4f91d6c3ee5eb5d586b00cc8cf788b62918635a1e568a4","src/assets/brand/orderflow-monochrome-light.png":"61d33fa717b3b6295eed572895561fb03e5d641bbd5df0062dc3fdbb753948b1","src/assets/brand/orderflow-primary-clean-2.png":"0c82750e56ac8380e5fa4f8c194de2f41b125b4a667e4fe0c48e9987fbafaad1","src/assets/brand/orderflow-primary-clean.png":"183854d6bfc4352acf11ece81f6ccf68bc7acccdefe52a57af750f56fa0ba96b","src/assets/brand/orderflow-primary.png":"7b5790d00c28b09eebc95a7b9ef2983b1cc887f016de53326bf57648f82b081a","src/assets/brand/orderflow-wordmark.png":"f91a2d90b7e50739b8885a10f98064184ff88486d20ad42c3d02b0c0f85598a6","src/components/layout/AppearanceMenu.tsx":"6b4f68e41be8572b82e8172f2fbe649cc48701e1ba91196303ff37da26b618d5","src/components/layout/AppShell.tsx":"4b5b1e235fa286beb85a149ba552461bee2b81aaf3df64f2e2d087f64ab8eff0","src/components/layout/PageHeader.tsx":"d73fb616d76bd9cb09716d14fca379ba976dc96e9d0f28999396214b41532245","src/components/layout/Sidebar.tsx":"95ca049b1f84084098669d6b628720a1a58b90083ae629791e68378a57d9099f","src/components/orders/CreateOrderForm.tsx":"5698ebd2569acc767f885958f9af9bf536f834b793a9955f228732095725170b","src/components/orders/OrderFilters.tsx":"9b99f863aabe0fbb906b706b87d3297ba1e0c077ef581da946493c1de14b0379","src/components/orders/OrderReleaseTrace.tsx":"235a7fdf42dbaaee7f53a6da9e0a2aca77c2fb49865ac3eb00f7598ad352359a","src/components/orders/OrderSearch.tsx":"8d7255f381bcf470903133f58691fe33ac2651e1aa3de2768a60e46db1ba72af","src/components/orders/OrdersSourceNotice.tsx":"4b182ccb54891d718ef75383a0d107936a038629e0b6b92424975c7b2b9bdefd","src/components/orders/OrderStatus.tsx":"8de43bab902cfb8d0e6bc7e4ab00e0df4f1e2bf2b8b48ce328e913d9c01b360e","src/components/orders/OrderTable.tsx":"6568cff6b6592fa83745a2228bfc2263c7b989e6b5dddc25ccb803b3dc1bb209","src/components/orders/ReadinessNotice.tsx":"5b53d0a50b61c4b3f47f61c4dd28b4323ec3353b165e43d36aa35cbc7d77b8f4","src/components/release/ArtifactIdentity.tsx":"9cf984465211d29d8387e2a308e12863caf87b79882ba7b1205d9483c5011e64","src/components/release/ReleaseDecision.tsx":"e93b511db4aeb5f10d4aa36088463d81f19c50962a31d823c795727f6dbbeb13","src/components/release/ReleaseOverview.tsx":"755e7386d63acaea848d376c5e5cc0941ca91c7b57fef47a58ee16bb63477438","src/components/release/ReleaseStatus.tsx":"0f8a98417377eb2f669b8ce48eff322edcf1c15496aa1b6b42b15d7e5663e428","src/components/release/SecurityControls.tsx":"f36356a3218231696b3ffe1b30cb6560d529af8ed7d37531cd2412dbc43eb87f","src/components/ui/Badge.tsx":"cb91a0371ed12ef394a231d73bd0ec2fda054565448a68ac3dafad6ab6eebba5","src/components/ui/Button.tsx":"94d992323e06cd077a29f5305207fbd5f9b4481f2967f943340d1678c78896bf","src/components/ui/EmptyState.tsx":"2f87d45f8cf38cf593ea7da366011cd984f42d8952d88af392fd051c6e524c6c","src/components/ui/ErrorState.tsx":"086f4e78afdd9c6562c714bf0c1e09d02df83f8cc50e4bafac2195aef5256828","src/components/ui/Input.tsx":"f4409ec60039735ee2580ccf8464c0a73b8891d0c6fc9278296a6255f32f2e67","src/components/ui/OrderFlowLogo.tsx":"0e3ac2822b0dd61e2979ef1c83ff536ebf08e754d2551521b60af8bbf13d3493","src/components/ui/Skeleton.tsx":"e796a347c6c7772012a13b5dc18bc9a1531bbfe20fbc1eb0fbbf05b1b101f4fb","src/components/ui/Table.tsx":"dbe4a15a25d5a2ccdbe9e06835877453bc70abdc69e27f3f2d9a3b2444c43767","src/config/api.ts":"0d995df9b656e31555b7f22bc70d475c1db226e69f08cdf1a03aec11f855fab2","src/config/orders.ts":"a4ef349cc7114781da7f465cc739a269e1eb96e63126668fdac0d6415c01e91c","src/index.css":"e560059f6b6b915719a311fd8dea4f98dc194478c14c5ba0e99d63dac2345808","src/lib/appearance.tsx":"151965124735ea35d7da6d6ff248232c86551c5651ebe21a5dbb6ac45b8b3453","src/lib/orderPresentation.ts":"c9858fadd6f47660fbbdc69953c8d2cdbfc802038c97b0e1abc93df74d4ef90c","src/lib/useRequestScope.ts":"f8086235968bfbb364dd7b428640db6677a4d2e48f5aa4475266f58d80372ed7","src/lib/utils.ts":"6ebf3250fc1d89508954f928ff651af8bd54adebe58c413b25374fc460909847","src/main.tsx":"2ad8a6864c7d20176ca08ea723c8b19132d53078befd3374a56e00d68028027f","src/mocks/orders.ts":"51d49e8b6b81d9f559d62f52d914926527ad934e4d5948e6b1641e57b09fbc4b","src/mocks/release.ts":"97b1da594dd208584aef04cedacee7872c9acfd19527014e8b43fa76ed75fd19","src/pages/CreateOrder.tsx":"3ffcdeaae633ed59007921c3ee4ba825beb483b522e796f488a11455ffce8392","src/pages/Dashboard.tsx":"6694b0176e6ddc4768b5a9abc9e16bb54fb87589aa82615bdca7334b4dc0c80f","src/pages/OrderDetail.tsx":"ada7c532e0813f931a2aeec3399cd54b56be91a3fa34a31a7bc2a36dc67f7f98","src/pages/Orders.tsx":"762f4a63459787e30b980ad97a22ef0a397571066545b34f44d34593726d49f4","src/pages/ReleaseConsole.tsx":"d18da475cbabe44ce3e10d16f63a7f54b2604cf61807352b123d1be478b7bf80","src/services/apiError.ts":"50d0d1b91af457323fa00db56c3de61a73ee38fbd20ce643fb8c472f03dcf8a4","src/services/jsonTransport.ts":"b72b5bc07d464b97e735fd90fa6d63a336bef278a40001dfaae010cc837706c1","src/services/orders.ts":"254fda9b44a09213def6e66b5c199f5f9929e80647a210713d5c67cd42e505b5","src/services/readiness.ts":"5e8b89580e242ffac2019ecb6ab6dcb8c176c0f27bf8828c5b18a0ae4c3d5c16","src/services/release.ts":"72f0ba0ce3549a1ed9e895e2d98d893ada79ee13244e8a1a3138f8363ccb350e","src/services/releaseEvidence.ts":"637aa7b93c96333bc10e46dfc50219ed9baaa1e5d22e65dd734e62058d874c41","src/services/requestScope.ts":"1c5391ed01bcadd7c5fea31bb28bd309bab2458fe75d4bc65d8a39574a83109d","src/types/order.ts":"ac652f88d318cdbcbd92dcba43e21bffdb404ddaec233aa9843194ab688a18f1","src/types/release.ts":"98fcd7fbc86049b896e9ff3b9ebbc2bb0271171e1b5763ace725828e50d7c472","src/vite-env.d.ts":"bf144e3cdae616e27b064c8c2b94b14525e220fb3facc4cb4884d21b65eb5aa5","tests/consumer.test.cjs":"1ab5e4d9b4a4220fd50774981153833bfe5b6c3fa7ccb1df77c8feb71c205f5d","tests/integration.test.cjs":"04b3ef7fbc14827c3bd59ff241d211bbe5b231e95f3ce255c2c79bf227685455","tests/load-ts.cjs":"5ec00f57cb2e147a4e5dc3e5b014fe4a4b97034d3a66bdf97ba026da3958d40e","tests/orders.test.cjs":"f58e4f30eac4f5b7ba564e36bf5c0c3c91e03de9483a5c40dccc9a2aac60f3d7","tests/presentation.test.cjs":"6621a5783ae1f9b8274619dc8053fb353b22bcced59a862aa809f33b3c395c09","tests/readiness.test.cjs":"a86962e6c1759347c95dd428fdcb04b66f3b23b59816be72bcb78633f01a54b5","tests/release.test.cjs":"984a23ab8c3bd903b16c05c5fe56fde1b817cbc4290d1f26cc2cca745492effd","tests/verification.test.cjs":"b4fdba6d85b84640765a405f67502235f7466d4b9af6954ee9808d7cffb81283","verify_m4_frontend.cjs":"4314d53e7485ecf8c3be4403b67eb335dadf7c59e6db9c415f5ee3d0ecc3cc5e","package.json":"b998d98bded60e8e73140a6ab36e8d6560d1ef62210f578fb0c2159657c2b517","package-lock.json":"45fadee1370e03f9e5936c5f6df7659192cce0caf3769c020c6deec7034680d8","tsconfig.app.json":"a3b1e8d9b144e401dd083ce2ddfeb3afd7856f835533d48ef3f5c443073591c2","tsconfig.node.json":"b85e73d9fd76df4510e8b8f75af37e7c6071caaba1cb71741c630dc1bd5937dd","vite.config.ts":"21672fb77c38a3f55bfe87713f621dcb4b6f7aed536d21e1ba0583df43cb3e4c"}}
+
+TAP version 13
+# Subtest: [F1 HTTP double] pre-deploy remains UNVERIFIED and invalid data supplies no old decision
+ok 1 - [F1 HTTP double] pre-deploy remains UNVERIFIED and invalid data supplies no old decision
+  ---
+  duration_ms: 235.978
+  type: 'test'
+  ...
+# Subtest: [D3 contract] fixtures and HTTP JSON cannot self-upgrade to VERIFIED
+ok 2 - [D3 contract] fixtures and HTTP JSON cannot self-upgrade to VERIFIED
+  ---
+  duration_ms: 0.864
+  type: 'test'
+  ...
+# Subtest: [D3 contract] v1 remains valid; expected identity mismatch fails closed
+ok 3 - [D3 contract] v1 remains valid; expected identity mismatch fails closed
+  ---
+  duration_ms: 0.3184
+  type: 'test'
+  ...
+# Subtest: [D3 contract] proposed provenance rejects mismatch, stale, future, invalid dates and missing fields
+ok 4 - [D3 contract] proposed provenance rejects mismatch, stale, future, invalid dates and missing fields
+  ---
+  duration_ms: 0.6258
+  type: 'test'
+  ...
+# Subtest: [D3 contract] empty, malformed, contradictory data never supplies a valid release
+ok 5 - [D3 contract] empty, malformed, contradictory data never supplies a valid release
+  ---
+  duration_ms: 6.0786
+  type: 'test'
+  ...
+# Subtest: [D3 transport] path boundary rejects external/credential/query/traversal URLs
+ok 6 - [D3 transport] path boundary rejects external/credential/query/traversal URLs
+  ---
+  duration_ms: 0.3074
+  type: 'test'
+  ...
+# Subtest: [D3 transport] HTTP failure, HTML success, oversized/invalid stream reject with no fallback/retry
+ok 7 - [D3 transport] HTTP failure, HTML success, oversized/invalid stream reject with no fallback/retry
+  ---
+  duration_ms: 1.2202
+  type: 'test'
+  ...
+# Subtest: [D3 transport] timeout covers stalled headers and body; cancellation works even if fetch ignores signal
+ok 8 - [D3 transport] timeout covers stalled headers and body; cancellation works even if fetch ignores signal
+  ---
+  duration_ms: 40.3732
+  type: 'test'
+  ...
+# Subtest: [D3 unit] latest request scope rejects late evidence completion
+ok 9 - [D3 unit] latest request scope rejects late evidence completion
+  ---
+  duration_ms: 0.6282
+  type: 'test'
+  ...
+# Subtest: [readiness M4 simulated] ready/unready/not-implemented are distinct from API liveness
+ok 10 - [readiness M4 simulated] ready/unready/not-implemented are distinct from API liveness
+  ---
+  duration_ms: 2.9653
+  type: 'test'
+  ...
+# Subtest: [readiness simulated] deadline/cancel fail closed
+ok 11 - [readiness simulated] deadline/cancel fail closed
+  ---
+  duration_ms: 11.2574
+  type: 'test'
+  ...
+# Subtest: [presentation SSR] simulated readiness is explicitly labelled, never live DB evidence
+ok 12 - [presentation SSR] simulated readiness is explicitly labelled, never live DB evidence
+  ---
+  duration_ms: 152.1601
+  type: 'test'
+  ...
+# Subtest: [F16 unit] recent orders sort newest first without mutating API data
+ok 13 - [F16 unit] recent orders sort newest first without mutating API data
+  ---
+  duration_ms: 15.304
+  type: 'test'
+  ...
+# Subtest: [F16 unit] timestamp display explicitly uses UTC independent of host timezone
+ok 14 - [F16 unit] timestamp display explicitly uses UTC independent of host timezone
+  ---
+  duration_ms: 389.1878
+  type: 'test'
+  ...
+# Subtest: [contract / HTTP double] quantity boundaries accepted; invalid values rejected before POST
+ok 15 - [contract / HTTP double] quantity boundaries accepted; invalid values rejected before POST
+  ---
+  duration_ms: 35.7937
+  type: 'test'
+  ...
+# Subtest: [response contract] int32 boundaries parse; overflow is never accepted as an order
+ok 16 - [response contract] int32 boundaries parse; overflow is never accepted as an order
+  ---
+  duration_ms: 0.5958
+  type: 'test'
+  ...
+# Subtest: [component contract / hook double] create form enforces the same quantity range
+ok 17 - [component contract / hook double] create form enforces the same quantity range
+  ---
+  duration_ms: 267.8712
+  type: 'test'
+  ...
+# Subtest: [explicit fixture] pre-deploy NOT_RUN preserves reported production status without deployment approval
+ok 18 - [explicit fixture] pre-deploy NOT_RUN preserves reported production status without deployment approval
+  ---
+  duration_ms: 1.4955
+  type: 'test'
+  ...
+# Subtest: [explicit fixture] failed/unknown controls and wrong digest cannot supply Production PASS
+ok 19 - [explicit fixture] failed/unknown controls and wrong digest cannot supply Production PASS
+  ---
+  duration_ms: 0.5134
+  type: 'test'
+  ...
+# Subtest: [contract] valid GET and POST call the real adapter with current backend shapes
+ok 20 - [contract] valid GET and POST call the real adapter with current backend shapes
+  ---
+  duration_ms: 31.4062
+  type: 'test'
+  ...
+# Subtest: [contract] required order fields reject omissions and wrong runtime types
+ok 21 - [contract] required order fields reject omissions and wrong runtime types
+  ---
+  duration_ms: 1.1703
+  type: 'test'
+  ...
+# Subtest: [contract] invalid list envelopes, rows and duplicate identities are rejected
+ok 22 - [contract] invalid list envelopes, rows and duplicate identities are rejected
+  ---
+  duration_ms: 4.7342
+  type: 'test'
+  ...
+# Subtest: [contract] POST rejects empty, mismatched and malformed success responses
+ok 23 - [contract] POST rejects empty, mismatched and malformed success responses
+  ---
+  duration_ms: 2.6449
+  type: 'test'
+  ...
+# Subtest: [contract] unexpected success status and content type cannot produce success
+ok 24 - [contract] unexpected success status and content type cannot produce success
+  ---
+  duration_ms: 0.9576
+  type: 'test'
+  ...
+# Subtest: [unit] HTTP errors retain status; non-string error fields do not become UI content
+ok 25 - [unit] HTTP errors retain status; non-string error fields do not become UI content
+  ---
+  duration_ms: 1.2046
+  type: 'test'
+  ...
+# Subtest: [unit] invalid runtime create input is rejected before any fetch
+ok 26 - [unit] invalid runtime create input is rejected before any fetch
+  ---
+  duration_ms: 0.6764
+  type: 'test'
+  ...
+# Subtest: [unit] offline write rejects, remains live, never retries or inserts a mock order
+ok 27 - [unit] offline write rejects, remains live, never retries or inserts a mock order
+  ---
+  duration_ms: 5.8999
+  type: 'test'
+  ...
+# Subtest: [unit] timeout covers both fetch and delayed JSON body; POST outcome stays unconfirmed
+ok 28 - [unit] timeout covers both fetch and delayed JSON body; POST outcome stays unconfirmed
+  ---
+  duration_ms: 55.8814
+  type: 'test'
+  ...
+# Subtest: [unit] changing mode cancels a late live result and prevents stale connectivity updates
+ok 29 - [unit] changing mode cancels a late live result and prevents stale connectivity updates
+  ---
+  duration_ms: 16.2267
+  type: 'test'
+  ...
+# Subtest: [unit] view cancellation and pre-aborted signal do not emit a success or call fetch
+ok 30 - [unit] view cancellation and pre-aborted signal do not emit a success or call fetch
+  ---
+  duration_ms: 3.3582
+  type: 'test'
+  ...
+# Subtest: [unit] stale mock writes are cancelled before they modify the new selection
+ok 31 - [unit] stale mock writes are cancelled before they modify the new selection
+  ---
+  duration_ms: 57.71
+  type: 'test'
+  ...
+# Subtest: [unit] empty mock create -> list -> detail is consistent; stores are isolated
+ok 32 - [unit] empty mock create -> list -> detail is consistent; stores are isolated
+  ---
+  duration_ms: 119.7069
+  type: 'test'
+  ...
+# Subtest: [unit] connectivity is observed, resets with selection, and liveness never proves readiness
+ok 33 - [unit] connectivity is observed, resets with selection, and liveness never proves readiness
+  ---
+  duration_ms: 1.6951
+  type: 'test'
+  ...
+# Subtest: [unit] earlier same-mode responses cannot overwrite latest connectivity observations
+ok 34 - [unit] earlier same-mode responses cannot overwrite latest connectivity observations
+  ---
+  duration_ms: 1.1635
+  type: 'test'
+  ...
+# Subtest: [unit] latest view request guards data, errors, loading and unmount cleanup
+ok 35 - [unit] latest view request guards data, errors, loading and unmount cleanup
+  ---
+  duration_ms: 0.582
+  type: 'test'
+  ...
+# Subtest: [unit] switching live -> mock -> live still rejects the first selection result
+ok 36 - [unit] switching live -> mock -> live still rejects the first selection result
+  ---
+  duration_ms: 1.2155
+  type: 'test'
+  ...
+# Subtest: [unit presentation/SSR] registry equality is explicitly not registry verification
+ok 37 - [unit presentation/SSR] registry equality is explicitly not registry verification
+  ---
+  duration_ms: 385.4518
+  type: 'test'
+  ...
+# Subtest: [unit presentation/SSR] rollback PASS remains reported and restoration unverified
+ok 38 - [unit presentation/SSR] rollback PASS remains reported and restoration unverified
+  ---
+  duration_ms: 3.2475
+  type: 'test'
+  ...
+# Subtest: [unit presentation/SSR] deployment omission and invalid release are unavailable
+ok 39 - [unit presentation/SSR] deployment omission and invalid release are unavailable
+  ---
+  duration_ms: 1.8657
+  type: 'test'
+  ...
+# Subtest: [unit presentation/SSR] deployment PASS does not assert active traffic
+ok 40 - [unit presentation/SSR] deployment PASS does not assert active traffic
+  ---
+  duration_ms: 1.7675
+  type: 'test'
+  ...
+# Subtest: [F1 presentation/SSR] pre-deploy has a neutral NOT_RUN state, not a failed deployment
+ok 41 - [F1 presentation/SSR] pre-deploy has a neutral NOT_RUN state, not a failed deployment
+  ---
+  duration_ms: 2.2531
+  type: 'test'
+  ...
+# Subtest: [F1 presentation/SSR] failed deployment keeps reported rollback PASS and FAIL distinct
+ok 42 - [F1 presentation/SSR] failed deployment keeps reported rollback PASS and FAIL distinct
+  ---
+  duration_ms: 6.3442
+  type: 'test'
+  ...
+# Subtest: [unit presentation/SSR] selected Live mode alone never asserts API or DB connectivity
+ok 43 - [unit presentation/SSR] selected Live mode alone never asserts API or DB connectivity
+  ---
+  duration_ms: 2.5662
+  type: 'test'
+  ...
+# Subtest: [unit presentation/SSR] order release trace explicitly has no attributed commit
+ok 44 - [unit presentation/SSR] order release trace explicitly has no attributed commit
+  ---
+  duration_ms: 4.003
+  type: 'test'
+  ...
+# Subtest: [F2 HTTP double] M4 readiness uses /api/ready and preserves 200/503/404 distinctions
+ok 45 - [F2 HTTP double] M4 readiness uses /api/ready and preserves 200/503/404 distinctions
+  ---
+  duration_ms: 34.121
+  type: 'test'
+  ...
+# Subtest: [F2 HTTP double] contradictory and incomplete M4 readiness bodies never confirm a database
+ok 46 - [F2 HTTP double] contradictory and incomplete M4 readiness bodies never confirm a database
+  ---
+  duration_ms: 9.0005
+  type: 'test'
+  ...
+# Subtest: [F2 HTTP double] transport errors, HTML and malformed JSON are errors, not readiness PASS
+ok 47 - [F2 HTTP double] transport errors, HTML and malformed JSON are errors, not readiness PASS
+  ---
+  duration_ms: 1.5641
+  type: 'test'
+  ...
+# Subtest: [F2 HTTP double] readiness deadline covers the body and mid-request cancellation
+ok 48 - [F2 HTTP double] readiness deadline covers the body and mid-request cancellation
+  ---
+  duration_ms: 28.8852
+  type: 'test'
+  ...
+# Subtest: [F2 HTTP double] readiness recovers independently of successful /health
+ok 49 - [F2 HTTP double] readiness recovers independently of successful /health
+  ---
+  duration_ms: 3.0051
+  type: 'test'
+  ...
+# Subtest: [F1 contract] pre-deploy NOT_RUN preserves reported production PASS or BLOCKED
+ok 50 - [F1 contract] pre-deploy NOT_RUN preserves reported production PASS or BLOCKED
+  ---
+  duration_ms: 1.9965
+  type: 'test'
+  ...
+# Subtest: [F1 contract] v2 requires complete deployment and registry even when production is BLOCKED
+ok 51 - [F1 contract] v2 requires complete deployment and registry even when production is BLOCKED
+  ---
+  duration_ms: 1.5728
+  type: 'test'
+  ...
+# Subtest: [F1 contract] NOT_RUN cannot contain executed probes or rollback outcomes
+ok 52 - [F1 contract] NOT_RUN cannot contain executed probes or rollback outcomes
+  ---
+  duration_ms: 0.6188
+  type: 'test'
+  ...
+# Subtest: [F1 contract] strict deployment enums reject unknown, null and unagreed rollback NOT_RUN
+ok 53 - [F1 contract] strict deployment enums reject unknown, null and unagreed rollback NOT_RUN
+  ---
+  duration_ms: 1.1673
+  type: 'test'
+  ...
+# Subtest: [F1 contract] failed deployment supports reported rollback outcomes without inferring deployment PASS
+ok 54 - [F1 contract] failed deployment supports reported rollback outcomes without inferring deployment PASS
+  ---
+  duration_ms: 0.3957
+  type: 'test'
+  ...
+# Subtest: [contract] existing v1 schema fields and real historical BLOCKED payload remain compatible
+ok 55 - [contract] existing v1 schema fields and real historical BLOCKED payload remain compatible
+  ---
+  duration_ms: 2.182
+  type: 'test'
+  ...
+# Subtest: [contract] all supported demo fixtures validate without making authenticity claims
+ok 56 - [contract] all supported demo fixtures validate without making authenticity claims
+  ---
+  duration_ms: 0.3007
+  type: 'test'
+  ...
+# Subtest: [contract] every mandatory control FAIL or missing rejects production PASS in v1/v2
+ok 57 - [contract] every mandatory control FAIL or missing rejects production PASS in v1/v2
+  ---
+  duration_ms: 1.0117
+  type: 'test'
+  ...
+# Subtest: [contract] BLOCKED is never upgraded to PASS even when all controls report PASS
+ok 58 - [contract] BLOCKED is never upgraded to PASS even when all controls report PASS
+  ---
+  duration_ms: 0.4235
+  type: 'test'
+  ...
+# Subtest: [contract] strict identities, object shapes, schema version and v1 unknown fields
+ok 59 - [contract] strict identities, object shapes, schema version and v1 unknown fields
+  ---
+  duration_ms: 0.9833
+  type: 'test'
+  ...
+# Subtest: [contract] registry PASS requires complete well-formed metadata and consistent digests
+ok 60 - [contract] registry PASS requires complete well-formed metadata and consistent digests
+  ---
+  duration_ms: 0.6509
+  type: 'test'
+  ...
+# Subtest: [contract] deployment PASS requires production, readiness and API PASS
+ok 61 - [contract] deployment PASS requires production, readiness and API PASS
+  ---
+  duration_ms: 0.3958
+  type: 'test'
+  ...
+# Subtest: [contract] missing v2 deployment rejects the payload; v1 does not require deployment
+ok 62 - [contract] missing v2 deployment rejects the payload; v1 does not require deployment
+  ---
+  duration_ms: 0.4554
+  type: 'test'
+  ...
+# Subtest: [contract] contradictory rollback results and non-string enums are rejected
+ok 63 - [contract] contradictory rollback results and non-string enums are rejected
+  ---
+  duration_ms: 0.5918
+  type: 'test'
+  ...
+# Subtest: [contract] malformed or contradictory transport JSON never supplies a decision
+ok 64 - [contract] malformed or contradictory transport JSON never supplies a decision
+  ---
+  duration_ms: 0.4794
+  type: 'test'
+  ...
+# Subtest: [unit] ingestion preparation labels even valid source data UNVERIFIED
+ok 65 - [unit] ingestion preparation labels even valid source data UNVERIFIED
+  ---
+  duration_ms: 0.915
+  type: 'test'
+  ...
+# Subtest: [unit] release fixture changes reject stale loads and returned fixtures cannot be mutated globally
+ok 66 - [unit] release fixture changes reject stale loads and returned fixtures cannot be mutated globally
+  ---
+  duration_ms: 1562.7917
+  type: 'test'
+  ...
+# Subtest: [unit] verification report reflects failure or execution error without reporting PASS
+ok 67 - [unit] verification report reflects failure or execution error without reporting PASS
+  ---
+  duration_ms: 2.9756
+  type: 'test'
+  ...
+# Subtest: [unit] even a passing unit run discloses unexecuted integration/E2E and security checks
+ok 68 - [unit] even a passing unit run discloses unexecuted integration/E2E and security checks
+  ---
+  duration_ms: 0.355
+  type: 'test'
+  ...
+1..68
+# tests 68
+# suites 0
+# pass 68
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 12132.4998
+
+
+

@@ -1,0 +1,48 @@
+# D2 frontend-owned TEST topology only. Does not replace the main Compose.
+services:
+  order-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${D2_DB_NAME:?runner supplies test configuration}
+      POSTGRES_USER: ${D2_DB_USER:?runner supplies test configuration}
+      POSTGRES_PASSWORD: ${D2_DB_PASSWORD:?runner supplies test configuration}
+    volumes:
+      - order-db-data:/var/lib/postgresql/data
+      - ../../database/001-init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  order-app:
+    build:
+      context: ../../order-app
+    environment:
+      DB_HOST: order-db
+      DB_PORT: "5432"
+      DB_NAME: ${D2_DB_NAME:?runner supplies test configuration}
+      DB_USER: ${D2_DB_USER:?runner supplies test configuration}
+      DB_PASSWORD: ${D2_DB_PASSWORD:?runner supplies test configuration}
+    depends_on:
+      order-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health')"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  order-frontend:
+    build:
+      context: ..
+    ports:
+      - "127.0.0.1:5180:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      order-app:
+        condition: service_healthy
+volumes:
+  order-db-data:

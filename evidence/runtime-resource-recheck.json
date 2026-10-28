@@ -1,0 +1,6 @@
+{
+  "available_mib": 1128,
+  "load": 85,
+  "full_runtime_min_mib": 1536,
+  "scanner_container_limit_mib": 256
+}

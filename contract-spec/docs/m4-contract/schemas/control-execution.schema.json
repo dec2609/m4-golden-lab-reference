@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "source_commit",
+    "source_snapshot",
+    "run_id",
+    "artifact_subject",
+    "execution_subject",
+    "raw_exit_code",
+    "execution_started",
+    "report_sha256",
+    "tool",
+    "command",
+    "wrapper_exit_code",
+    "policy_exit_code"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "m4-contract-1.0"
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "source_snapshot": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,100}$"
+    },
+    "artifact_subject": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "execution_subject": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "source_commit",
+            "source_snapshot"
+          ],
+          "properties": {
+            "kind": {
+              "const": "source"
+            },
+            "source_commit": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}$"
+            },
+            "source_snapshot": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "digest"
+          ],
+          "properties": {
+            "kind": {
+              "const": "artifact"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "raw_exit_code": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "execution_started": {
+      "type": "boolean"
+    },
+    "report_sha256": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "tool": {
+      "type": "object",
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "command": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "wrapper_exit_code": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "policy_exit_code": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "source_context": {
+      "type": "object",
+      "required": [
+        "scope",
+        "head_commit",
+        "dirty",
+        "shallow",
+        "raw_exit_codes",
+        "scanner_integrity"
+      ],
+      "properties": {
+        "scope": {
+          "type": "string"
+        },
+        "head_commit": {
+          "type": "string"
+        },
+        "dirty": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "shallow": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "raw_exit_codes": {
+          "type": "array",
+          "items": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "scanner_integrity": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

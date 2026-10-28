@@ -1,0 +1,3 @@
+# Raw reference bytes: preserve historical CRLF/EOF and patch context lines.
+* -text whitespace=blank-at-eol,space-before-tab,cr-at-eol,-blank-at-eof
+patches/*.patch -whitespace

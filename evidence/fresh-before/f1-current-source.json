@@ -1,0 +1,7 @@
+{
+  "finding": "F1",
+  "layer": "CONTROL_LEVEL_NOT_RELEASE_BYPASS",
+  "validator_source": "f0c9af193e1b12f32331539845093d39fe8dcf26",
+  "context_source": "53f18d8b5689a25bc03b647b54eb1a4ba0cd78ef",
+  "valid_ERROR_return": true
+}

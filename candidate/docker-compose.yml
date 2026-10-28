@@ -1,0 +1,55 @@
+services:
+  order-app:
+    build:
+      context: ./ma-nguon/order-app
+    ports:
+      - "127.0.0.1:8081:8080"
+    environment:
+      DB_HOST: order-db
+      DB_PORT: 5432
+      DB_NAME: orders
+      DB_USER: orders_app
+      DB_PASSWORD: orders-app-dev
+    depends_on:
+      order-db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8080/ready')"
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - order-network
+
+  order-db:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_DB: orders
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders-dev
+    volumes:
+      - order-db-data:/var/lib/postgresql/data
+      - ./ma-nguon/database/001-init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+      - ./ma-nguon/database/002-runtime-role.sql:/docker-entrypoint-initdb.d/002-runtime-role.sql:ro
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orders -d orders"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - order-network
+
+volumes:
+  order-db-data:
+
+networks:
+  order-network:
+    driver: bridge

@@ -1,0 +1,7 @@
+{
+  "contract": "reference-1",
+  "evidence_kind": "SOURCE_EXECUTION",
+  "run_id": "frozen-source-run",
+  "source_commit": "53f18d8b5689a25bc03b647b54eb1a4ba0cd78ef",
+  "source_snapshot": "f808f084937fa036ca89560a321819ec0c09e4d0acbcba032e3fdfe2cc03f5b5"
+}

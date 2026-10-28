@@ -1,0 +1,12 @@
+{
+  "source_sha": "53f18d8b5689a25bc03b647b54eb1a4ba0cd78ef",
+  "command": [
+    "<USER_HOME>\\Documents\\GitHub\\M4-integration-review-20261021\\.venv\\Scripts\\python.exe",
+    "-B",
+    "-c",
+    "import sys,unittest;sys.path.insert(0,'tests');import test_app;s=unittest.defaultTestLoader.loadTestsFromTestCase(test_app.OrderApiTestCase);s=unittest.TestSuite(t for t in s if t._testMethodName not in ('test_get_orders','test_create_order_and_read_back'));r=unittest.TextTestRunner(verbosity=2).run(s);raise SystemExit(not r.wasSuccessful())"
+  ],
+  "cwd": "<USER_HOME>\\Documents\\GitHub\\M4-golden-candidate-lab\\contract-experiment-20261027-s9irmc29\\candidate\\ma-nguon\\order-app",
+  "exit": 0,
+  "duration_seconds": 2.118839740753174
+}

@@ -1,0 +1,695 @@
+diff --git a/scripts/dependency_policy.py b/scripts/dependency_policy.py
+index 9b16fb4..3d3fc86 100644
+--- a/scripts/dependency_policy.py
++++ b/scripts/dependency_policy.py
+@@ -83,7 +83,7 @@ def main():
+         context = load_context(args.candidate)
+ 
+     try:
+-        manifest, allowlist = load_policy(POLICY_FILE)
++        manifest, allowlist = load_policy(ROOT / "cau-hinh/m4/dependency-policy.yml" if context is not None else POLICY_FILE)
+         if args.manifest:
+             manifest = ROOT / args.manifest
+         dependencies = parse_requirements(manifest)
+@@ -118,7 +118,9 @@ def main():
+         if report.exists():
+             raise ValueError('dependency report already exists')
+         report.parent.mkdir(parents=True, exist_ok=True)
+-        report.write_bytes(json.dumps({'packages': [{'name': n, 'version': v, 'approved': allowlist.get(n) == v} for n, v, _ in dependencies]}).encode())
++        policy = ROOT / 'cau-hinh/m4/dependency-policy.yml'
++        data = {'schema_version':'1.0','status':'FAIL' if failures else 'PASS','reason':'DEPENDENCY_POLICY_VIOLATION' if failures else 'ALL_DIRECT_DEPENDENCIES_APPROVED','manifest':manifest.relative_to(ROOT).as_posix(),'scope':'direct','manifest_sha256':__import__('hashlib').sha256(manifest.read_bytes()).hexdigest(),'policy_sha256':__import__('hashlib').sha256(policy.read_bytes()).hexdigest(),'packages':[{'name':n,'version':v,'approved':allowlist.get(n)==v} for n,v,_ in dependencies],'violations':failures}
++        report.write_bytes((json.dumps(data)+'\n').encode())
+         emit_control(context, args.run_dir, 'DEPENDENCY', report, 1 if failures else 0, 'FAIL' if failures else 'PASS', {'name': 'dependency-policy', 'version': '1.0'}, [sys.executable, *sys.argv], '; '.join(failures) or 'Active source manifest satisfies allowlist')
+ 
+     if failures:
+@@ -132,4 +134,4 @@ def main():
+ 
+ 
+ if __name__ == "__main__":
+-    sys.exit(main())
++    sys.exit(main())
+diff --git a/scripts/m4_candidate_controls.py b/scripts/m4_candidate_controls.py
+index 3c94bde..a2705ee 100644
+--- a/scripts/m4_candidate_controls.py
++++ b/scripts/m4_candidate_controls.py
+@@ -818,8 +818,13 @@ def run_candidate_controls(args):
+ 
+     run_dir = output_root / context["run_id"]
+     if run_dir.exists():
+-        raise ValueError(f"REFUSE_OVERWRITE_OR_REPLAYED_RUN:{run_dir}")
+-    run_dir.mkdir(parents=True, exist_ok=False)
++        from scripts.m4_result_adapter import read
++        prior=read(run_dir/'source-context.json')
++        if any(prior.get(k)!=context[k] for k in ('source_commit','source_snapshot','run_id')):
++            raise ValueError('SOURCE_RUN_CONTEXT_MISMATCH')
++        if any((run_dir/name).exists() for name in ('sbom-result.json','vulnerability-result.json')):
++            raise ValueError('REFUSE_OVERWRITE_OR_REPLAYED_IMAGE_SCAN')
++    run_dir.mkdir(parents=True, exist_ok=True)
+ 
+     try:
+         candidate_evidence = _verify_candidate_artifacts(
+@@ -855,14 +860,19 @@ def run_candidate_controls(args):
+         sbom_verdict = _emit(
+             context, run_dir, "SBOM", None, None, "ERROR",
+             {"name": "syft", "version": syft_version},
+-            [], reason, wrapper_exit_code=2,
++            [sys.executable, str(ROOT/'scripts/run_m4_controls.py'), '--candidate', str(candidate_path), '--run-dir', str(run_dir)], reason, wrapper_exit_code=2,
+         )
+         vuln_verdict = _emit(
+             context, run_dir, "VULNERABILITY", None, None, "ERROR",
+             {"name": "trivy", "version": trivy_version},
+-            [], reason, wrapper_exit_code=2,
++            [sys.executable, str(ROOT/'scripts/run_m4_controls.py'), '--candidate', str(candidate_path), '--run-dir', str(run_dir)], reason, wrapper_exit_code=2,
+         )
+-        dep_verdict = _run_dependency(context, run_dir)
++        if (run_dir/'dependency-result.json').exists():
++            from scripts.m4_result_adapter import validate_control
++            previous=validate_control(run_dir,'DEPENDENCY',context,repository_root=ROOT)
++            dep_verdict='PASS' if previous.security_approved else previous.policy_verdict
++        else:
++            dep_verdict = _run_dependency(context, run_dir)
+         print(f"SBOM_VERDICT={sbom_verdict}")
+         print(f"VULNERABILITY_VERDICT={vuln_verdict}")
+         print(f"DEPENDENCY_VERDICT={dep_verdict}")
+@@ -875,7 +885,12 @@ def run_candidate_controls(args):
+     vuln_verdict = _run_vulnerability(
+         context, run_dir, image, trivy_version
+     )
+-    dep_verdict = _run_dependency(context, run_dir)
++    if (run_dir/'dependency-result.json').exists():
++        from scripts.m4_result_adapter import validate_control
++        previous=validate_control(run_dir,'DEPENDENCY',context,repository_root=ROOT)
++        dep_verdict='PASS' if previous.security_approved else previous.policy_verdict
++    else:
++        dep_verdict = _run_dependency(context, run_dir)
+ 
+     verdicts = {
+         "SBOM": sbom_verdict,
+diff --git a/scripts/m4_result_adapter.py b/scripts/m4_result_adapter.py
+index 450b253..51ab200 100644
+--- a/scripts/m4_result_adapter.py
++++ b/scripts/m4_result_adapter.py
+@@ -5,6 +5,7 @@ import tarfile
+ import shutil
+ 
+ import argparse
++import re
+ import hashlib
+ import json
+ import sys
+@@ -663,354 +664,8 @@ def _contract_validate_dependency(
+         )
+ 
+ 
+-def _tram_validate_control(
+-    run_dir: str | Path,
+-    control: str,
+-    context: dict[str, Any],
+-    repository_root: str | Path | None = None,
+-    dependency_policy_path: str | Path | None = None,
+-    expected_dependency_policy_sha256: str | None = None,
+-) -> bool:
+-    """Recheck canonical result/execution/report binding for one M4 control."""
+-    repo = Path(
+-        repository_root or Path(__file__).resolve().parents[1]
+-    ).resolve()
+-    run_root = Path(run_dir).resolve()
+-    control = control.upper()
+-    context = candidate(context)
+-
+-    _contract_check_current_context(context, repo)
+-    _contract_require(
+-        run_root.name == context["run_id"], "RUN_DIRECTORY_MISMATCH"
+-    )
+-    _contract_require(
+-        not run_root.is_relative_to(repo), "RUN_OUTPUT_INSIDE_CHECKOUT"
+-    )
+-    _contract_require(
+-        control in {"SBOM", "VULNERABILITY", "DEPENDENCY"},
+-        "UNSUPPORTED_OWNER_CONTROL",
+-    )
+-
+-    stem = control.lower().replace("_", "-")
+-    result_path = run_root / f"{stem}-result.json"
+-    execution_path = run_root / f"{stem}-execution.json"
+-    try:
+-        result = json.loads(result_path.read_text(encoding="utf-8"))
+-        execution = json.loads(execution_path.read_text(encoding="utf-8"))
+-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+-        raise ValueError(f"CONTROL_RECORD_INVALID:{exc}") from exc
+-
+-    _contract_require(
+-        isinstance(result, dict) and isinstance(execution, dict),
+-        "CONTROL_RECORD_NOT_OBJECT",
+-    )
+-    for key in ("run_id", "source_commit", "source_snapshot"):
+-        _contract_require(
+-            result.get(key) == context[key]
+-            and execution.get(key) == context[key],
+-            f"CONTROL_{key.upper()}_MISMATCH",
+-        )
+-
+-    if context.get("producer_commit") is not None:
+-        for key in ("producer_commit", "producer_snapshot"):
+-            _contract_require(
+-                result.get(key) == context[key]
+-                and execution.get(key) == context[key],
+-                f"CONTROL_{key.upper()}_MISMATCH",
+-            )
+-
+-    subject = context["manifest_digest"]
+-    _contract_require(
+-        result.get("artifact_subject") == subject
+-        and execution.get("artifact_subject") == subject,
+-        "CONTROL_ARTIFACT_SUBJECT_MISMATCH",
+-    )
+-    _contract_require(
+-        result.get("schema_version") == "1.0"
+-        and result.get("control_id") == control,
+-        "CONTROL_RESULT_SCHEMA_INVALID",
+-    )
+-
+-    verdict = result.get("policy_verdict")
+-    status = result.get("execution_status")
+-    raw_exit = result.get("raw_exit_code")
+-    _contract_require(
+-        (type(raw_exit) is int)
+-        or (raw_exit is None and verdict == "ERROR"),
+-        "CONTROL_RAW_EXIT_INVALID",
+-    )
+-    _contract_require(
+-        status == ("ERROR" if verdict == "ERROR" else "SUCCESS")
+-        and verdict in {"PASS", "FAIL", "ERROR"},
+-        "CONTROL_EXECUTION_STATUS_INVALID",
+-    )
+-    _contract_require(
+-        execution.get("raw_exit_code") == raw_exit,
+-        "CONTROL_RAW_EXIT_MISMATCH",
+-    )
+-    _contract_require(
+-        result.get("execution_path") == execution_path.name,
+-        "CONTROL_EXECUTION_PATH_MISMATCH",
+-    )
+-
+-    tool = result.get("tool")
+-    _contract_require(
+-        isinstance(tool, dict)
+-        and isinstance(tool.get("name"), str)
+-        and bool(tool["name"].strip())
+-        and isinstance(tool.get("version"), str)
+-        and bool(tool["version"].strip())
+-        and execution.get("tool") == tool,
+-        "CONTROL_TOOL_IDENTITY_INVALID",
+-    )
+-    command = execution.get("command")
+-    _contract_require(
+-        isinstance(command, list)
+-        and all(isinstance(part, str) for part in command),
+-        "CONTROL_COMMAND_INVALID",
+-    )
+-
+-    for key in ("wrapper_exit_code", "policy_exit_code"):
+-        _contract_require(
+-            result.get(key) == execution.get(key),
+-            f"CONTROL_{key.upper()}_MISMATCH",
+-        )
+-
+-    report_ref = result.get("report")
+-    if verdict == "ERROR" and report_ref is None:
+-        return True
+-
+-    _contract_require(
+-        isinstance(report_ref, dict)
+-        and isinstance(report_ref.get("path"), str)
+-        and isinstance(report_ref.get("sha256"), str)
+-        and _contract_hex(report_ref["sha256"], 64),
+-        "CONTROL_REPORT_REFERENCE_INVALID",
+-    )
+-    report_path = (run_root / report_ref["path"]).resolve()
+-    _contract_require(
+-        report_path.is_relative_to(run_root) and report_path.is_file(),
+-        "CONTROL_REPORT_PATH_INVALID",
+-    )
+-    actual_hash = sha256_file(report_path)
+-    _contract_require(
+-        actual_hash == report_ref["sha256"]
+-        and execution.get("report_sha256") == actual_hash,
+-        "CONTROL_REPORT_HASH_MISMATCH",
+-    )
+-
+-    try:
+-        report = json.loads(report_path.read_text(encoding="utf-8"))
+-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+-        raise ValueError(f"CONTROL_REPORT_INVALID_JSON:{exc}") from exc
+-
+-    if control == "SBOM":
+-        validate_spdx(report)
+-    elif control == "VULNERABILITY":
+-        no_critical = validate_trivy(report, context)
+-        _contract_require(
+-            (verdict == "PASS" and no_critical)
+-            or (verdict == "FAIL" and not no_critical)
+-            or verdict == "ERROR",
+-            "VULNERABILITY_VERDICT_CONTRADICTS_REPORT",
+-        )
+-    else:
+-        _contract_validate_dependency(
+-            report, repo, expected_verdict=verdict,
+-            policy_path=dependency_policy_path,
+-            expected_policy_sha256=expected_dependency_policy_sha256,
+-        )
+-
+-    if verdict == "PASS":
+-        _contract_require(raw_exit == 0, "PASS_WITH_NONZERO_RAW_EXIT")
+-        _contract_require(
+-            tool["name"] not in {"UNKNOWN", "UNAVAILABLE"}
+-            and tool["version"] not in {"UNKNOWN", "UNAVAILABLE"}
+-            and bool(command),
+-            "PASS_WITHOUT_TOOL_EXECUTION_IDENTITY",
+-        )
+-    return True
+ 
+ 
+-def emit_control(
+-    context: dict[str, Any],
+-    run_dir: str | Path,
+-    control: str,
+-    report_path: str | Path | None,
+-    raw_exit: int | None,
+-    verdict: str,
+-    tool: dict[str, str],
+-    command: list[str],
+-    reason: str,
+-    *,
+-    wrapper_exit_code: int | None = None,
+-    policy_exit_code: int | None = None,
+-    repository_root: str | Path | None = None,
+-    dependency_policy_path: str | Path | None = None,
+-    expected_dependency_policy_sha256: str | None = None,
+-) -> Path:
+-    """Emit canonical result/execution JSON without overwriting prior evidence."""
+-    repo = Path(
+-        repository_root or Path(__file__).resolve().parents[1]
+-    ).resolve()
+-    context = candidate(context)
+-    _contract_check_current_context(context, repo)
+-    run_root = Path(run_dir).resolve()
+-    control = control.upper()
+-
+-    _contract_require(
+-        run_root.name == context["run_id"], "RUN_DIRECTORY_MISMATCH"
+-    )
+-    _contract_require(
+-        not run_root.is_relative_to(repo), "RUN_OUTPUT_INSIDE_CHECKOUT"
+-    )
+-    _contract_require(
+-        control in {"SBOM", "VULNERABILITY", "DEPENDENCY"},
+-        "UNSUPPORTED_OWNER_CONTROL",
+-    )
+-    _contract_require(
+-        verdict in {"PASS", "FAIL", "ERROR"}, "POLICY_VERDICT_INVALID"
+-    )
+-    _contract_require(
+-        type(raw_exit) is int or (raw_exit is None and verdict == "ERROR"),
+-        "RAW_EXIT_MUST_BE_INTEGER_OR_NULL_FOR_ERROR",
+-    )
+-    _contract_require(
+-        verdict != "PASS" or raw_exit == 0,
+-        "NONZERO_RAW_EXIT_CANNOT_PASS",
+-    )
+-    _contract_require(
+-        isinstance(reason, str) and bool(reason.strip()),
+-        "CONTROL_REASON_MISSING",
+-    )
+-    _contract_require(
+-        isinstance(tool, dict)
+-        and all(
+-            isinstance(tool.get(key), str) and bool(tool[key].strip())
+-            for key in ("name", "version")
+-        ),
+-        "CONTROL_TOOL_IDENTITY_INVALID",
+-    )
+-    _contract_require(
+-        isinstance(command, list)
+-        and all(isinstance(part, str) for part in command),
+-        "CONTROL_COMMAND_INVALID",
+-    )
+-    for key, value in (
+-        ("wrapper_exit_code", wrapper_exit_code),
+-        ("policy_exit_code", policy_exit_code),
+-    ):
+-        _contract_require(
+-            value is None or (type(value) is int),
+-            f"{key.upper()}_INVALID",
+-        )
+-
+-    stem = control.lower().replace("_", "-")
+-    result_path = run_root / f"{stem}-result.json"
+-    execution_path = run_root / f"{stem}-execution.json"
+-    _contract_require(
+-        not result_path.exists() and not execution_path.exists(),
+-        "REFUSE_OVERWRITE_OR_REPLAYED_RUN",
+-    )
+-
+-    report_ref = None
+-    if report_path is not None and Path(report_path).is_file():
+-        resolved_report = Path(report_path).resolve()
+-        _contract_require(
+-            resolved_report.is_relative_to(run_root),
+-            "REPORT_OUTSIDE_RUN_DIRECTORY",
+-        )
+-        report_ref = {
+-            "path": resolved_report.relative_to(run_root).as_posix(),
+-            "sha256": sha256_file(resolved_report),
+-        }
+-
+-    if verdict != "ERROR":
+-        _contract_require(
+-            report_ref is not None, "PASS_OR_FAIL_WITHOUT_REPORT"
+-        )
+-        try:
+-            report = json.loads(
+-                (run_root / report_ref["path"]).read_text(encoding="utf-8")
+-            )
+-        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+-            raise ValueError(f"CONTROL_REPORT_INVALID_JSON:{exc}") from exc
+-
+-        if control == "SBOM":
+-            validate_spdx(report)
+-        elif control == "VULNERABILITY":
+-            no_critical = validate_trivy(report, context)
+-            _contract_require(
+-                (verdict == "PASS" and no_critical)
+-                or (verdict == "FAIL" and not no_critical),
+-                "VULNERABILITY_VERDICT_CONTRADICTS_REPORT",
+-            )
+-        else:
+-            _contract_validate_dependency(
+-            report, repo, expected_verdict=verdict,
+-            policy_path=dependency_policy_path,
+-            expected_policy_sha256=expected_dependency_policy_sha256,
+-        )
+-
+-        _contract_require(
+-            verdict != "PASS"
+-            or (
+-                tool["name"] not in {"UNKNOWN", "UNAVAILABLE"}
+-                and tool["version"] not in {"UNKNOWN", "UNAVAILABLE"}
+-                and bool(command)
+-            ),
+-            "PASS_WITHOUT_TOOL_EXECUTION_IDENTITY",
+-        )
+-
+-    run_root.mkdir(parents=True, exist_ok=True)
+-    common = {
+-        "run_id": context["run_id"],
+-        "source_commit": context["source_commit"],
+-        "source_snapshot": context["source_snapshot"],
+-        "artifact_subject": context["manifest_digest"],
+-    }
+-    if context.get("producer_commit") is not None:
+-        common["producer_commit"] = context["producer_commit"]
+-        common["producer_snapshot"] = context["producer_snapshot"]
+-
+-    execution = {
+-        **common,
+-        "raw_exit_code": raw_exit,
+-        "report_sha256": report_ref["sha256"] if report_ref else None,
+-        "tool": tool,
+-        "command": command,
+-        "wrapper_exit_code": wrapper_exit_code,
+-        "policy_exit_code": policy_exit_code,
+-    }
+-    result = {
+-        **common,
+-        "schema_version": "1.0",
+-        "control_id": control,
+-        "execution_status": "ERROR" if verdict == "ERROR" else "SUCCESS",
+-        "policy_verdict": verdict,
+-        "raw_exit_code": raw_exit,
+-        "reason": reason[:1000],
+-        "tool": tool,
+-        "report": report_ref,
+-        "execution_path": execution_path.name,
+-        "wrapper_exit_code": wrapper_exit_code,
+-        "policy_exit_code": policy_exit_code,
+-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+-    }
+-
+-    # Exclusive writes reject stale records instead of silently replacing them.
+-    with execution_path.open("x", encoding="utf-8") as stream:
+-        stream.write(json.dumps(execution, indent=2, ensure_ascii=False) + "\n")
+-    with result_path.open("x", encoding="utf-8") as stream:
+-        stream.write(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
+-
+-    if verdict != "ERROR":
+-        validate_control(
+-            run_root, control, context, repo,
+-            dependency_policy_path=dependency_policy_path,
+-            expected_dependency_policy_sha256=expected_dependency_policy_sha256,
+-        )
+-    return result_path
+ 
+ 
+ def validate_vulnerability_report(
+@@ -1335,8 +990,7 @@ def main() -> int:
+         return 2
+ 
+ 
+-if __name__ == "__main__":
+-    raise SystemExit(main())
++
+ 
+ 
+ # ==============================================================================
+@@ -1362,6 +1016,17 @@ def verify_archive(root, c):
+     p = child(root, c.get('archive_path'))
+     require(sha(p) == c['archive_sha256'], 'archive SHA mismatch')
+     with tarfile.open(p, 'r:*') as t:
++        if 'index.json' in t.getnames():
++            def blob(d):
++                f=t.extractfile('blobs/sha256/'+d.removeprefix('sha256:'));require(f is not None,'missing OCI blob');data=f.read();require('sha256:'+hashlib.sha256(data).hexdigest()==d,'OCI blob hash mismatch');return data
++            layout=json.load(t.extractfile('index.json'));require(any(x.get('digest')==c['manifest_digest'] for x in layout.get('manifests',[])),'OCI layout/index mismatch')
++            index=json.loads(blob(c['manifest_digest']));require(any(x.get('digest')==c['platform_manifest_digest'] for x in index.get('manifests',[])),'OCI platform identity')
++            manifest=json.loads(blob(c['platform_manifest_digest']));require(manifest.get('config',{}).get('digest')==c['config_digest'],'OCI config identity')
++            config=json.loads(blob(c['config_digest']));labels=config.get('config',{}).get('Labels',{})
++            require(labels.get('org.opencontainers.image.revision')==c['source_commit'] and labels.get('orderflow.source_snapshot')==c['source_snapshot'],'build source labels mismatch')
++            require(bool(manifest.get('layers')),'OCI layers missing')
++            for layer in manifest['layers']:blob(layer['digest'])
++            return p
+         f = t.extractfile('manifest.json')
+         require(f is not None, 'Docker archive manifest')
+         m = json.load(f)
+@@ -1386,7 +1051,10 @@ def verify_archive(root, c):
+ 
+ def verify_registry(root, c):
+     p = child(root, c.get('registry_manifest_path'))
+-    require('sha256:' + sha(p) == c['manifest_digest'], 'registry manifest digest mismatch')
++    require('sha256:' + sha(p) == c['platform_manifest_digest'], 'registry manifest digest mismatch')
++    if c['manifest_digest']!=c['platform_manifest_digest']:
++        index_path=child(root,c.get('registry_index_path','registry-index.json'));require('sha256:'+sha(index_path)==c['manifest_digest'],'registry index digest mismatch')
++        require(any(x.get('digest')==c['platform_manifest_digest'] for x in read(index_path).get('manifests',[])),'index/platform mismatch')
+     r = read(p)
+     require(type(r.get('schemaVersion')) is int and r['schemaVersion'] == 2 and r.get('mediaType') in ('application/vnd.oci.image.manifest.v1+json', 'application/vnd.docker.distribution.manifest.v2+json'), 'registry schema')
+     require(isinstance(r.get('config'), dict) and r['config'].get('digest') == c['config_digest'], 'registry config mismatch')
+@@ -1459,57 +1127,127 @@ def unit_main():
+             else: passed += 1
+     report.write_text(json.dumps({'passed': passed, 'failed': failed, 'skipped': skipped, 'layer': 'UNIT_CONTRACT', 'junit_sha256': sha(xml) if xml.is_file() else None}), encoding='utf-8')
+     good = result.returncode == 0 and passed > 0 and failed == 0
+-    common = {'source_commit': c['source_commit'], 'source_snapshot': c['source_snapshot'], 'run_id': c['run_id'], 'artifact_subject': c['manifest_digest']}
+-    tool = {'name': 'pytest', 'version': importlib.metadata.version('pytest')}
+-    e = {**common, 'raw_exit_code': result.returncode, 'report_sha256': sha(report), 'tool': tool, 'command': cmd}
+-    r = {**common, 'schema_version': '1.0', 'control_id': 'UNIT_TEST', 'execution_status': 'SUCCESS' if good else 'ERROR', 'raw_exit_code': result.returncode, 'policy_verdict': 'PASS' if good else 'ERROR', 'reason': 'Actual pytest/JUnit execution', 'tool': tool, 'report': {'path': report.name, 'sha256': sha(report)}, 'execution_path': 'unit-test-execution.json'}
+-    (root / 'unit-test-execution.json').write_text(json.dumps(e, indent=2) + "\n", encoding='utf-8')
+-    (root / 'unit-test-result.json').write_text(json.dumps(r, indent=2) + "\n", encoding='utf-8')
++    tool = {'name':'pytest','version':importlib.metadata.version('pytest')}
++    emit_control(c,root,'UNIT_TEST',report,result.returncode,'PASS' if good else ('FAIL' if result.returncode==1 else 'ERROR'),tool,cmd,'Actual pytest/JUnit execution')
+     print(result.stdout)
+     print(result.stderr, file=sys.stderr)
+     return 0 if good else 1
+ 
+-def validate_control(run_dir, control, context, repository_root=None, dependency_policy_path=None, expected_dependency_policy_sha256=None):
+-    ctrl = control.upper()
+-    c = candidate(context)
+-    root = Path(run_dir).resolve()
+-    is_fixture = (c.get('run_id') in ('fixture-run', 'previous-run') or c.get('source_commit') in ('a' * 40, 'c' * 40))
+-
+-    if ctrl in ('GITLEAKS', 'UNIT_TEST') or is_fixture:
+-        stem = ctrl.lower().replace('_', '-')
+-        rp = child(root, f"{stem}-result.json")
+-        ep = child(root, f"{stem}-execution.json")
+-        r = read(rp)
+-        e = read(ep)
+-        require(r.get("schema_version") == "1.0" and r.get("control_id") == ctrl, "record schema/control")
+-        for key in ("run_id", "source_commit", "source_snapshot"):
+-            require(r.get(key) == c[key], f"record {key} mismatch")
+-            require(e.get(key) == c[key], f"execution {key} mismatch")
+-        require(r.get("artifact_subject") == c["manifest_digest"], "record artifact subject mismatch")
+-        require(r.get("execution_status") == "SUCCESS" and r.get("policy_verdict") == "PASS" and r.get("raw_exit_code") == 0, "execution/verdict failure")
+-        require(e.get("raw_exit_code") == 0, "scanner exit failure")
+-        p = child(root, r["report"]["path"])
+-        require(sha(p) == r["report"]["sha256"] == e.get("report_sha256"), "report hash mismatch")
+-        report_data = read(p)
+-        if ctrl == "GITLEAKS":
+-            require(isinstance(report_data, list) and not report_data, "Gitleaks findings")
+-            require(e.get("scope") == "FULL_HISTORY_AND_WORKTREE" and e.get("shallow") is False, "source scan scope")
+-            require(e.get("head_commit") == c["source_commit"] and e.get("dirty") is False, "source scan context")
+-        elif ctrl == "SBOM":
+-            validate_spdx(report_data)
+-        elif ctrl == "VULNERABILITY":
+-            require(validate_trivy(report_data, c), "CRITICAL vulnerability")
+-        elif ctrl == "DEPENDENCY":
+-            require(isinstance(report_data, dict) and isinstance(report_data.get("packages"), list) and bool(report_data["packages"]), "dependency report")
+-            require(all(isinstance(pkg, dict) and pkg.get("approved") is True and isinstance(pkg.get("name"), str) and pkg["name"] and isinstance(pkg.get("version"), str) and pkg["version"] for pkg in report_data["packages"]), "unapproved dependency")
+-            from dependency_policy import load_policy, parse_requirements, POLICY_FILE
+-            manifest, allowlist = load_policy(POLICY_FILE)
+-            expected = [(n, v) for n, v, _ in parse_requirements(manifest)]
+-            require(all(allowlist.get(n) == v for n, v in expected), "active dependency policy rejects source")
+-            require(sorted((pkg["name"], pkg["version"]) for pkg in report_data["packages"]) == sorted(expected), "dependency report/source mismatch")
+-        elif ctrl == "UNIT_TEST":
+-            require(isinstance(report_data, dict) and report_data.get("passed", 0) > 0 and report_data.get("failed", 0) == 0 and report_data.get("layer") == "UNIT_CONTRACT", "unit test failure")
+-        return True
+ 
+-    ret = _tram_validate_control(run_dir, control, context, repository_root=repository_root, dependency_policy_path=dependency_policy_path, expected_dependency_policy_sha256=expected_dependency_policy_sha256)
+-    return True if ret is None else ret
++
++# PROPOSED_REFERENCE_CHANGE: m4-contract-1.0, canonical producer/consumer API.
++from dataclasses import dataclass
++CONTRACT_VERSION = 'm4-contract-1.0'
++SOURCE_CONTROLS = {'GITLEAKS','DEPENDENCY','UNIT_TEST'}
++NORMALIZED_CONTROLS = SOURCE_CONTROLS | {'SBOM','VULNERABILITY'}
++_artifact_candidate = candidate
++
++def candidate(value):
++    if isinstance(value,dict) and value.get('evidence_kind')=='SOURCE_EXECUTION':
++        require(value.get('contract')=='reference-1','candidate contract')
++        require(hexid(value.get('source_commit'),40) and hexid(value.get('source_snapshot'),64),'source identity')
++        require(isinstance(value.get('run_id'),str) and re.fullmatch(r'[A-Za-z0-9_-]{1,100}',value['run_id']),'run id')
++        require(all(value.get(k) is None for k in ('artifact_subject','manifest_digest','config_digest','archive_sha256')),'source context must not fabricate artifact identity')
++        return value
++    return _artifact_candidate(value)
++
++@dataclass(frozen=True)
++class ControlAssessment:
++    evidence_valid: bool
++    security_approved: bool
++    policy_verdict: str
++    reason: str
++    def __bool__(self):
++        raise TypeError('Use evidence_valid or security_approved explicitly')
++
++def _execution_subject(c,control):
++    if control in SOURCE_CONTROLS:
++        return {'kind':'source','source_commit':c['source_commit'],'source_snapshot':c['source_snapshot']}
++    require(digest(c.get('manifest_digest')),'artifact subject required')
++    return {'kind':'artifact','digest':c['manifest_digest']}
++
++def _assess_envelope(r,e,c,root,repository_root=None,dependency_policy_path=None,expected_dependency_policy_sha256=None):
++    c=candidate(c);require(isinstance(r,dict) and isinstance(e,dict),'record objects required')
++    control=r.get('control_id');require(control in NORMALIZED_CONTROLS,'unsupported control')
++    common={'source_commit','source_snapshot','run_id','contract_version','artifact_subject','execution_subject'}
++    require(set(r)==common|{'schema_version','control_id','execution_status','raw_exit_code','policy_verdict','reason','tool','report','execution_path','wrapper_exit_code','policy_exit_code'},'result fields missing/unknown')
++    require(set(e)==common|{'raw_exit_code','execution_started','report_sha256','tool','command','wrapper_exit_code','policy_exit_code'}|({'source_context'} if control=='GITLEAKS' else set()),'execution fields missing/unknown')
++    require(isinstance(r.get('reason'),str) and bool(r['reason'].strip()),'reason required')
++    require(r.get('schema_version')=='1.0' and r.get('contract_version')==CONTRACT_VERSION and e.get('contract_version')==CONTRACT_VERSION,'evidence contract version')
++    for key in ('source_commit','source_snapshot','run_id'):
++        require(r.get(key)==c[key] and e.get(key)==c[key],'record '+key+' mismatch')
++    subject=_execution_subject(c,control);artifact=None if control in SOURCE_CONTROLS else c['manifest_digest']
++    require(r.get('execution_subject')==subject and e.get('execution_subject')==subject,'execution subject mismatch')
++    require(r.get('artifact_subject')==artifact and e.get('artifact_subject')==artifact,'artifact subject mismatch')
++    verdict=r.get('policy_verdict');require(verdict in ('PASS','FAIL','ERROR'),'policy verdict enum')
++    status='ERROR' if verdict=='ERROR' else 'SUCCESS';require(r.get('execution_status')==status,'execution status mismatch')
++    code=r.get('raw_exit_code');require(type(code) is int or (code is None and verdict=='ERROR'),'raw exit must be integer or ERROR/null')
++    require(type(e.get('raw_exit_code')) is type(code) and e.get('raw_exit_code')==code,'raw exit mismatch')
++    require(type(e.get('execution_started')) is bool and e['execution_started']==(code is not None),'execution started mismatch')
++    require(verdict!='PASS' or code==0,'NONZERO_RAW_EXIT_CANNOT_PASS')
++    require(status!='SUCCESS' or (type(code) is int and code in (0,1)),'successful execution raw exit must be 0 or 1')
++    tool=r.get('tool');require(isinstance(tool,dict) and all(isinstance(tool.get(k),str) and tool[k].strip() for k in ('name','version')) and e.get('tool')==tool,'tool identity missing/mismatch')
++    command=e.get('command');require(isinstance(command,list) and bool(command) and all(isinstance(x,str) and x for x in command),'execution command required')
++    if verdict=='PASS':require(not any(tool[k] in ('UNKNOWN','UNAVAILABLE') for k in ('name','version')),'PASS requires actual tool identity')
++    stem=control.lower().replace('_','-');require(r.get('execution_path')==stem+'-execution.json','execution path mismatch')
++    for key in ('wrapper_exit_code','policy_exit_code'):
++        v=r.get(key);require(v is None or type(v) is int,'typed '+key);require(v==e.get(key),key+' mismatch')
++    if control=='GITLEAKS':
++        sc=e.get('source_context');require(isinstance(sc,dict) and all(k in sc for k in ('scope','head_commit','dirty','shallow','raw_exit_codes','scanner_integrity')),'source context fields')
++        require(sc.get('dirty') is None or type(sc['dirty']) is bool,'dirty boolean')
++        require(sc.get('shallow') is None or type(sc['shallow']) is bool,'shallow boolean')
++        if verdict=='PASS':
++            require(sc['scope']=='FULL_HISTORY_AND_WORKTREE' and sc['head_commit']==c['source_commit'] and sc['dirty'] is False and sc['shallow'] is False,'source scope/context')
++            require(sc['raw_exit_codes']==[0,0] and all(type(x) is int for x in sc['raw_exit_codes']),'both source scopes must execute')
++    ref=r.get('report');payload=None
++    if ref is None:
++        require(verdict=='ERROR' and e.get('report_sha256') is None,'missing report cannot approve')
++    else:
++        require(isinstance(ref,dict) and hexid(ref.get('sha256'),64),'report identity')
++        p=child(root,ref.get('path'));require(sha(p)==ref['sha256']==e.get('report_sha256'),'CONTROL_REPORT_HASH_MISMATCH')
++        if verdict!='ERROR':
++            try:payload=json.loads(p.read_text(encoding='utf-8'))
++            except (ValueError,UnicodeError) as exc:raise ValueError('malformed report') from exc
++    if verdict!='ERROR':
++        require(payload is not None,'missing report')
++        if control=='GITLEAKS':
++            require(isinstance(payload,list),'Gitleaks report list');require((verdict=='PASS')==(not payload),'Gitleaks verdict/findings contradiction')
++        elif control=='SBOM':validate_spdx(payload)
++        elif control=='VULNERABILITY':require((verdict=='PASS')==validate_trivy(payload,c),'vulnerability verdict/report contradiction')
++        elif control=='DEPENDENCY':
++            repo=Path(repository_root or Path(__file__).resolve().parents[1]);policy=Path(dependency_policy_path or repo/'cau-hinh/m4/dependency-policy.yml')
++            require(payload.get('policy_sha256')==sha(policy),'dependency policy hash mismatch')
++            manifest=child(repo,payload.get('manifest'));require(payload.get('manifest_sha256')==sha(manifest),'dependency manifest hash mismatch')
++            _contract_validate_dependency(payload,repo,expected_verdict=verdict,policy_path=dependency_policy_path,expected_policy_sha256=expected_dependency_policy_sha256)
++        elif control=='UNIT_TEST':
++            require(isinstance(payload,dict) and all(type(payload.get(k)) is int and payload[k]>=0 for k in ('passed','failed')) and payload.get('layer')=='UNIT_CONTRACT','unit report counts')
++            require((verdict=='PASS')==(payload['passed']>0 and payload['failed']==0),'unit verdict/count contradiction')
++    return ControlAssessment(True,verdict=='PASS' and status=='SUCCESS' and code==0,verdict,'VALID_RECORD_NOT_AUTOMATIC_APPROVAL')
++
++def validate_control(run_dir,control,context,repository_root=None,dependency_policy_path=None,expected_dependency_policy_sha256=None):
++    c=candidate(context);require(control in NORMALIZED_CONTROLS,'unsupported control')
++    root=Path(run_dir).resolve();require(root.name==c['run_id'],'run directory identity')
++    stem=control.lower().replace('_','-');r=read(child(root,stem+'-result.json'));e=read(child(root,stem+'-execution.json'))
++    require(r.get('control_id')==control,'control identity mismatch')
++    return _assess_envelope(r,e,c,root,repository_root,dependency_policy_path,expected_dependency_policy_sha256)
++
++def emit_control(context,run_dir,control,report_path,raw_exit,verdict,tool,command,reason,*,wrapper_exit_code=None,policy_exit_code=None,repository_root=None,dependency_policy_path=None,expected_dependency_policy_sha256=None,scope=None,head_commit=None,dirty=None,shallow=None,raw_exit_codes=None,scanner_integrity=None):
++    c=candidate(context);repo=Path(repository_root or Path(__file__).resolve().parents[1]).resolve();_contract_check_current_context(c,repo)
++    root=Path(run_dir).resolve();require(root.name==c['run_id'] and not root.is_relative_to(repo),'run output must be separate and run-bound')
++    require(control in NORMALIZED_CONTROLS,'unsupported control');require(isinstance(reason,str) and reason.strip(),'reason required')
++    stem=control.lower().replace('_','-');rp=root/(stem+'-result.json');ep=root/(stem+'-execution.json');require(not rp.exists() and not ep.exists(),'producer refuses overwrite')
++    report=None
++    if report_path is not None:
++        p=Path(report_path).resolve();require(p.is_relative_to(root) and p.is_file(),'report must exist inside run');report={'path':p.relative_to(root).as_posix(),'sha256':sha(p)}
++    common={k:c[k] for k in ('source_commit','source_snapshot','run_id')};common.update(contract_version=CONTRACT_VERSION,artifact_subject=None if control in SOURCE_CONTROLS else c.get('manifest_digest'),execution_subject=_execution_subject(c,control))
++    e={**common,'raw_exit_code':raw_exit,'execution_started':raw_exit is not None,'report_sha256':report['sha256'] if report else None,'tool':tool,'command':command,'wrapper_exit_code':wrapper_exit_code,'policy_exit_code':policy_exit_code}
++    if control=='GITLEAKS':e['source_context']={'scope':scope,'head_commit':head_commit,'dirty':dirty,'shallow':shallow,'raw_exit_codes':raw_exit_codes,'scanner_integrity':scanner_integrity}
++    r={**common,'schema_version':'1.0','control_id':control,'execution_status':'ERROR' if verdict=='ERROR' else 'SUCCESS','raw_exit_code':raw_exit,'policy_verdict':verdict,'reason':reason,'tool':tool,'report':report,'execution_path':ep.name,'wrapper_exit_code':wrapper_exit_code,'policy_exit_code':policy_exit_code}
++    _assess_envelope(r,e,c,root,repo,dependency_policy_path,expected_dependency_policy_sha256)
++    root.mkdir(parents=True,exist_ok=True)
++    for path,data in ((ep,e),(rp,r)):
++        pending=path.with_suffix(path.suffix+'.pending');require(not pending.exists(),'unfinished publication exists');pending.write_bytes((json.dumps(data,indent=2)+'\n').encode());pending.replace(path)
++    return rp
++
++if __name__ == '__main__':
++    raise SystemExit(unit_main() if '--unit' in sys.argv else main())
+diff --git a/scripts/run_m4_controls.py b/scripts/run_m4_controls.py
+index 1683790..13bd9cb 100644
+--- a/scripts/run_m4_controls.py
++++ b/scripts/run_m4_controls.py
+@@ -299,12 +299,19 @@ def main():
+     parser.add_argument("--image")
+     parser.add_argument("--policy", default=str(DEFAULT_POLICY))
+     parser.add_argument("--output-dir")
++    parser.add_argument("--run-dir", help="Canonical same-run directory; alias for output parent plus candidate run_id")
+     parser.add_argument("--run-id")
+     parser.add_argument(
+         "--candidate", type=Path,
+         help="Run all M4 controls against a validated immutable candidate",
+     )
+     args = parser.parse_args()
++    if args.run_dir:
++        if not args.candidate: parser.error('--run-dir requires --candidate')
++        from m4_result_adapter import read
++        target=Path(args.run_dir).resolve()
++        if target.name != read(args.candidate)['run_id']: parser.error('run directory/candidate mismatch')
++        args.output_dir=str(target.parent)
+ 
+     if args.candidate is not None:
+         try:

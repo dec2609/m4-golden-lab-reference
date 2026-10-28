@@ -1,0 +1,42 @@
+{
+  "source_commit": "53f18d8b5689a25bc03b647b54eb1a4ba0cd78ef",
+  "source_snapshot": "f808f084937fa036ca89560a321819ec0c09e4d0acbcba032e3fdfe2cc03f5b5",
+  "run_id": "frozen-source-run",
+  "contract_version": "m4-contract-1.0",
+  "artifact_subject": null,
+  "execution_subject": {
+    "kind": "source",
+    "source_commit": "53f18d8b5689a25bc03b647b54eb1a4ba0cd78ef",
+    "source_snapshot": "f808f084937fa036ca89560a321819ec0c09e4d0acbcba032e3fdfe2cc03f5b5"
+  },
+  "raw_exit_code": null,
+  "execution_started": false,
+  "report_sha256": null,
+  "tool": {
+    "name": "Gitleaks",
+    "version": "UNAVAILABLE"
+  },
+  "command": [
+    "<USER_HOME>\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+    "<USER_HOME>\\Documents\\GitHub\\M4-golden-candidate-lab\\contract-experiment-20261027-s9irmc29\\candidate\\scripts\\source_security.py",
+    "--candidate",
+    "<USER_HOME>\\Documents\\GitHub\\M4-golden-candidate-lab\\contract-experiment-20261027-s9irmc29\\evidence\\frozen-source-run\\source-context.json",
+    "--run-dir",
+    "<USER_HOME>\\Documents\\GitHub\\M4-golden-candidate-lab\\contract-experiment-20261027-s9irmc29\\evidence\\frozen-source-run"
+  ],
+  "wrapper_exit_code": null,
+  "policy_exit_code": null,
+  "source_context": {
+    "scope": "FULL_HISTORY_AND_WORKTREE",
+    "head_commit": "53f18d8b5689a25bc03b647b54eb1a4ba0cd78ef",
+    "dirty": false,
+    "shallow": false,
+    "raw_exit_codes": [],
+    "scanner_integrity": {
+      "name": "Gitleaks",
+      "version": "UNAVAILABLE",
+      "archive_sha256": "ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d",
+      "binary_sha256": "NONE"
+    }
+  }
+}

@@ -1,0 +1,4 @@
+GITLEAKS_STATUS=FAIL
+REASON=Binary integrity/version/platform verification failed
+COMMIT=53f18d8b5689a25bc03b647b54eb1a4ba0cd78ef
+REPORT_HASH=NONE

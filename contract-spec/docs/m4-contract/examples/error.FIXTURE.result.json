@@ -1,0 +1,26 @@
+{
+  "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "source_snapshot": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "run_id": "example-fixture",
+  "contract_version": "m4-contract-1.0",
+  "artifact_subject": null,
+  "execution_subject": {
+    "kind": "source",
+    "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "source_snapshot": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "schema_version": "1.0",
+  "control_id": "UNIT_TEST",
+  "execution_status": "ERROR",
+  "raw_exit_code": null,
+  "policy_verdict": "ERROR",
+  "reason": "EXPLICIT FIXTURE ONLY - not current execution",
+  "tool": {
+    "name": "pytest",
+    "version": "FIXTURE"
+  },
+  "report": null,
+  "execution_path": "unit-test-execution.json",
+  "wrapper_exit_code": null,
+  "policy_exit_code": null
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "contract",
+    "evidence_kind",
+    "source_commit",
+    "source_snapshot",
+    "run_id"
+  ],
+  "properties": {
+    "contract": {
+      "const": "reference-1"
+    },
+    "evidence_kind": {
+      "const": "SOURCE_EXECUTION"
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "source_snapshot": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,100}$"
+    }
+  },
+  "additionalProperties": false
+}

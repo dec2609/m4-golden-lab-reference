@@ -1,0 +1,23 @@
+test_blank_customer_name (test_app.OrderApiTestCase.test_blank_customer_name) ... ok
+test_create_order_database_failure (test_app.OrderApiTestCase.test_create_order_database_failure) ... ok
+test_extra_fields_are_ignored (test_app.OrderApiTestCase.test_extra_fields_are_ignored) ... ok
+test_get_orders_database_failure (test_app.OrderApiTestCase.test_get_orders_database_failure) ... ok
+test_health (test_app.OrderApiTestCase.test_health) ... ok
+test_health_stays_ok_when_database_unavailable (test_app.OrderApiTestCase.test_health_stays_ok_when_database_unavailable) ... ok
+test_invalid_payloads_rejected_before_database (test_app.OrderApiTestCase.test_invalid_payloads_rejected_before_database) ... ok
+test_invalid_quantity_values (test_app.OrderApiTestCase.test_invalid_quantity_values) ... ok
+test_malformed_json (test_app.OrderApiTestCase.test_malformed_json) ... ok
+test_missing_customer_name (test_app.OrderApiTestCase.test_missing_customer_name) ... ok
+test_missing_product_name (test_app.OrderApiTestCase.test_missing_product_name) ... ok
+test_ready_connection_failure (test_app.OrderApiTestCase.test_ready_connection_failure) ... ok
+test_ready_connection_timeout_returns_503 (test_app.OrderApiTestCase.test_ready_connection_timeout_returns_503) ... ok
+test_ready_query_failure (test_app.OrderApiTestCase.test_ready_query_failure) ... ok
+test_ready_query_timeout_returns_503 (test_app.OrderApiTestCase.test_ready_query_timeout_returns_503) ... ok
+test_ready_recovers_after_database_returns (test_app.OrderApiTestCase.test_ready_recovers_after_database_returns) ... ok
+test_ready_when_database_connected (test_app.OrderApiTestCase.test_ready_when_database_connected) ... ok
+test_valid_quantity_boundaries (test_app.OrderApiTestCase.test_valid_quantity_boundaries) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.085s
+
+OK

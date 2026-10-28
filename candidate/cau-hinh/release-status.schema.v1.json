@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReleaseStatusSchemaV1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "source_commit",
+    "artifact_sha256",
+    "image_digest",
+    "controls",
+    "PRODUCTION_GATE"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "artifact_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "image_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "controls": {
+      "type": "object",
+      "required": [
+        "GITLEAKS_STATUS",
+        "DEPENDENCY_STATUS",
+        "UNIT_TEST_STATUS",
+        "SBOM_STATUS",
+        "DIGEST_STATUS",
+        "COSIGN_STATUS"
+      ],
+      "properties": {
+        "GITLEAKS_STATUS": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "DEPENDENCY_STATUS": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "UNIT_TEST_STATUS": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "SBOM_STATUS": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "DIGEST_STATUS": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "COSIGN_STATUS": { "type": "string", "enum": ["PASS", "FAIL"] }
+      },
+      "additionalProperties": false
+    },
+    "PRODUCTION_GATE": {
+      "type": "string",
+      "enum": ["PASS", "BLOCKED"]
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,26 @@
+{
+  "source_commit": "bfe8c1b28d22c9603dcba1ef0ae3a4f23eb5b42e",
+  "source_snapshot": "6f4155326abc0c12cd7b4da8abc8d85f96110c47b418ffa5b40b9c61edad5e73",
+  "run_id": "linux-source-run",
+  "contract_version": "m4-contract-1.0",
+  "artifact_subject": null,
+  "execution_subject": {
+    "kind": "source",
+    "source_commit": "bfe8c1b28d22c9603dcba1ef0ae3a4f23eb5b42e",
+    "source_snapshot": "6f4155326abc0c12cd7b4da8abc8d85f96110c47b418ffa5b40b9c61edad5e73"
+  },
+  "schema_version": "1.0",
+  "control_id": "GITLEAKS",
+  "execution_status": "ERROR",
+  "raw_exit_code": null,
+  "policy_verdict": "ERROR",
+  "reason": "Unknown/shallow/dirty source context",
+  "tool": {
+    "name": "Gitleaks",
+    "version": "UNAVAILABLE"
+  },
+  "report": null,
+  "execution_path": "gitleaks-execution.json",
+  "wrapper_exit_code": null,
+  "policy_exit_code": null
+}

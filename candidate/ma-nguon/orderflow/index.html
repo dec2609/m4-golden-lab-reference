@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/src/assets/brand/orderflow-favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <title>OrderFlow — Operations & Release Visibility</title>
+    <script>
+      (function () {
+        try {
+          var params = new URLSearchParams(window.location.search);
+          var qTheme = params.get("theme");
+          var theme =
+            qTheme === "light" || qTheme === "dark" || qTheme === "system"
+              ? qTheme
+              : localStorage.getItem("orderflow-theme") || "system";
+          var isDark =
+            theme === "dark" ||
+            (theme === "system" &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          var resolved = isDark ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", resolved);
+          if (isDark) {
+            document.documentElement.classList.add("dark");
+          } else {
+            document.documentElement.classList.remove("dark");
+          }
+          var qSidebar = params.get("sidebar");
+          var sidebar =
+            qSidebar === "expanded" || qSidebar === "compact"
+              ? qSidebar
+              : localStorage.getItem("orderflow-sidebar");
+          if (sidebar === "compact") {
+            document.documentElement.setAttribute("data-sidebar", "compact");
+            document.documentElement.style.setProperty("--sidebar-width", "64px");
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

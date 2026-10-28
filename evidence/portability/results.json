@@ -1,0 +1,16 @@
+{
+  "source_sha": "53f18d8b5689a25bc03b647b54eb1a4ba0cd78ef",
+  "raw_bytes_hashes_distinct": true,
+  "results": [
+    {
+      "line_endings": "LF",
+      "policy_sha256": "134e69bc4959c0af8359ffab2abbbb6bc2d3a6e886059fb4f266f8c96178ec97",
+      "parser_result": "PASS"
+    },
+    {
+      "line_endings": "CRLF",
+      "policy_sha256": "47fe81a17d4735f21be2677e04315259021234ea0edfaeb307fd1ab3d74bd7a6",
+      "parser_result": "PASS"
+    }
+  ]
+}

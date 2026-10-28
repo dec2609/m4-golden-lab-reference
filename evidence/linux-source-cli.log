@@ -1,0 +1,3 @@
+docker: Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: error mounting "/run/desktop/mnt/host/c/<USER_HOME>/Documents/GitHub/M4-golden-candidate-lab/contract-experiment-20261027-s9irmc29/toolcache" to rootfs at "/src/bin": create mountpoint for /src/bin mount: make mountpoint "/src/bin": mkdirat /var/lib/docker/rootfs/overlayfs/e8fbc1431feee9d9208715cade536b68056ae89814d5931f3dc44a47985c1911/src/bin: read-only file system
+
+Run 'docker run --help' for more information

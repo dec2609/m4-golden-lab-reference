@@ -1,0 +1,10 @@
+{
+  "source_sha": "53f18d8b5689a25bc03b647b54eb1a4ba0cd78ef",
+  "command": [
+    "node",
+    "verify_m4_frontend.cjs"
+  ],
+  "cwd": "<USER_HOME>\\Documents\\GitHub\\M4-golden-candidate-lab\\contract-experiment-20261027-s9irmc29\\candidate\\ma-nguon\\orderflow",
+  "exit": 0,
+  "duration_seconds": 13.84935188293457
+}

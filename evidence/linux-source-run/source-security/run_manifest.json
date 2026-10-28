@@ -1,0 +1,26 @@
+{
+  "schema_version": 2,
+  "timestamp_utc": "2026-10-27T08:47:07.264004+00:00",
+  "scanner": {
+    "name": "Gitleaks",
+    "version": "UNAVAILABLE",
+    "archive_sha256": "ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d",
+    "binary_sha256": "NONE"
+  },
+  "source_context": {
+    "head_commit": "bfe8c1b28d22c9603dcba1ef0ae3a4f23eb5b42e",
+    "is_dirty": true,
+    "scan_scope": "FULL_HISTORY_AND_WORKTREE"
+  },
+  "execution": {
+    "exit_code": -1,
+    "finding_count": -1,
+    "report_file": "NONE",
+    "report_sha256": "NONE"
+  },
+  "GITLEAKS_STATUS": "FAIL",
+  "reason": "Unknown/shallow/dirty source context",
+  "commands": [],
+  "raw_exit_codes": [],
+  "scope_executions": []
+}

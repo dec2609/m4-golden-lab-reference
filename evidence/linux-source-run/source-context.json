@@ -1,0 +1,7 @@
+{
+  "contract": "reference-1",
+  "evidence_kind": "SOURCE_EXECUTION",
+  "source_commit": "bfe8c1b28d22c9603dcba1ef0ae3a4f23eb5b42e",
+  "source_snapshot": "6f4155326abc0c12cd7b4da8abc8d85f96110c47b418ffa5b40b9c61edad5e73",
+  "run_id": "linux-source-run"
+}

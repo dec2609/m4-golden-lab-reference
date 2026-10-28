@@ -1,0 +1,61 @@
+{
+  "contract_version": "m4-contract-1.0",
+  "run_id": "frozen-source-run",
+  "source_commit": "53f18d8b5689a25bc03b647b54eb1a4ba0cd78ef",
+  "source_snapshot": "f808f084937fa036ca89560a321819ec0c09e4d0acbcba032e3fdfe2cc03f5b5",
+  "stages": {
+    "source-security": {
+      "command": [
+        "<USER_HOME>\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+        "-B",
+        "scripts/source_security.py",
+        "--candidate",
+        "<USER_HOME>\\Documents\\GitHub\\M4-golden-candidate-lab\\contract-experiment-20261027-s9irmc29\\evidence\\frozen-source-run\\source-context.json",
+        "--run-dir",
+        "<USER_HOME>\\Documents\\GitHub\\M4-golden-candidate-lab\\contract-experiment-20261027-s9irmc29\\evidence\\frozen-source-run"
+      ],
+      "exit_code": 1
+    },
+    "dependency": {
+      "command": [
+        "<USER_HOME>\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+        "-B",
+        "scripts/dependency_policy.py",
+        "--candidate",
+        "<USER_HOME>\\Documents\\GitHub\\M4-golden-candidate-lab\\contract-experiment-20261027-s9irmc29\\evidence\\frozen-source-run\\source-context.json",
+        "--run-dir",
+        "<USER_HOME>\\Documents\\GitHub\\M4-golden-candidate-lab\\contract-experiment-20261027-s9irmc29\\evidence\\frozen-source-run"
+      ],
+      "exit_code": 0
+    },
+    "unit": {
+      "command": [
+        "<USER_HOME>\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+        "-B",
+        "scripts/m4_result_adapter.py",
+        "--unit",
+        "--candidate",
+        "<USER_HOME>\\Documents\\GitHub\\M4-golden-candidate-lab\\contract-experiment-20261027-s9irmc29\\evidence\\frozen-source-run\\source-context.json",
+        "--run-dir",
+        "<USER_HOME>\\Documents\\GitHub\\M4-golden-candidate-lab\\contract-experiment-20261027-s9irmc29\\evidence\\frozen-source-run"
+      ],
+      "exit_code": 0
+    },
+    "GITLEAKS": {
+      "evidence_valid": true,
+      "security_approved": false,
+      "policy_verdict": "ERROR"
+    },
+    "DEPENDENCY": {
+      "evidence_valid": true,
+      "security_approved": true,
+      "policy_verdict": "PASS"
+    },
+    "UNIT_TEST": {
+      "evidence_valid": true,
+      "security_approved": true,
+      "policy_verdict": "PASS"
+    }
+  },
+  "decision": "BLOCKED"
+}

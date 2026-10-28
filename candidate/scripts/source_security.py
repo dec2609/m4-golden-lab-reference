@@ -1,0 +1,125 @@
+"""Archive-pinned Gitleaks installer. Linux x64 reference; other platforms fail closed."""
+import hashlib, io, json, platform, re, subprocess, tarfile, tempfile, urllib.request, uuid
+import argparse, sys, os
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+EVIDENCE_DIR = ROOT / 'bang-chung/m4/source-security'
+GITLEAKS_VERSION = 'v8.18.4'
+GITLEAKS_URL = 'https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz'
+GITLEAKS_ARCHIVE_SHA256 = 'ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d'
+BIN_DIR = Path(os.environ.get('M4_GITLEAKS_TOOL_DIR', str(Path(tempfile.gettempdir()) / 'orderflow-gitleaks-8.18.4'))).resolve()
+GITLEAKS_BIN = BIN_DIR / 'gitleaks'
+ACTUAL_VERSION = 'UNAVAILABLE'
+
+def get_file_sha256(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest() if Path(p).is_file() else 'NONE'
+
+def approved_executable():
+    archive = BIN_DIR / 'gl.tgz'
+    if get_file_sha256(archive) != GITLEAKS_ARCHIVE_SHA256: raise ValueError('archive checksum mismatch')
+    with tarfile.open(archive, 'r:gz') as t:
+        member = t.getmember('gitleaks')
+        if not member.isfile(): raise ValueError('scanner is not a regular file')
+        f = t.extractfile(member)
+        if f is None: raise ValueError('scanner missing in archive')
+        return f.read()
+
+def verify_binary_integrity():
+    try: return GITLEAKS_BIN.is_file() and get_file_sha256(GITLEAKS_BIN) == hashlib.sha256(approved_executable()).hexdigest()
+    except (OSError, ValueError, KeyError, tarfile.TarError): return False
+
+def install_and_verify_gitleaks():
+    global ACTUAL_VERSION
+    ACTUAL_VERSION = 'UNAVAILABLE'
+    try:
+        if platform.system() != 'Linux' or platform.machine().lower() not in ('x86_64', 'amd64'): return False
+        BIN_DIR.mkdir(parents=True, exist_ok=True)
+        archive = BIN_DIR / 'gl.tgz'
+        if not archive.exists(): urllib.request.urlretrieve(GITLEAKS_URL, archive)
+        binary = approved_executable()
+        if GITLEAKS_BIN.exists() and not verify_binary_integrity(): return False
+        if not GITLEAKS_BIN.exists(): GITLEAKS_BIN.write_bytes(binary); GITLEAKS_BIN.chmod(0o700)
+        p = subprocess.run([str(GITLEAKS_BIN), 'version'], capture_output=True, text=True, timeout=10, check=False)
+        version = (p.stdout or '').strip().removeprefix('v')
+        if p.returncode != 0 or version != GITLEAKS_VERSION.removeprefix('v'): return False
+        ACTUAL_VERSION = version
+        return verify_binary_integrity()
+    except (OSError, ValueError, KeyError, tarfile.TarError, subprocess.SubprocessError): return False
+
+def get_repo_context():
+    try:
+        def git(*args): return subprocess.check_output(['git', *args], cwd=ROOT, text=True).strip()
+        if git('rev-parse', '--is-shallow-repository') != 'false': return 'UNKNOWN', True
+        head = git('rev-parse', 'HEAD')
+        return head, bool(git('status', '--short'))
+    except (OSError, subprocess.SubprocessError): return 'UNKNOWN', True
+
+def validate_report(p):
+    try:
+        r = json.loads(Path(p).read_text(encoding='utf-8'))
+        if not isinstance(r, list): return False, 'Malformed JSON schema (expected list)', -1
+        if r: return False, f'Report contains {len(r)} finding(s)', len(r)
+        return True, '0 findings', 0
+    except (OSError, UnicodeError, ValueError): return False, 'Report missing, empty or invalid', -1
+
+def generate_evidence(manifest_path, txt_path, commit, dirty, exit_code, status, reason, report_file, report_sha256, finding_count):
+    m = {'schema_version': 2, 'timestamp_utc': datetime.now(timezone.utc).isoformat(), 'scanner': {'name': 'Gitleaks', 'version': ACTUAL_VERSION, 'archive_sha256': GITLEAKS_ARCHIVE_SHA256, 'binary_sha256': get_file_sha256(GITLEAKS_BIN)}, 'source_context': {'head_commit': commit, 'is_dirty': dirty, 'scan_scope': 'FULL_HISTORY_AND_WORKTREE'}, 'execution': {'exit_code': exit_code, 'finding_count': finding_count, 'report_file': report_file, 'report_sha256': report_sha256}, 'GITLEAKS_STATUS': status, 'reason': reason}
+    Path(manifest_path).write_text(json.dumps(m, indent=2) + '\n', encoding='utf-8')
+    Path(txt_path).write_text(f'GITLEAKS_STATUS={status}\nREASON={reason}\nCOMMIT={commit}\nREPORT_HASH={report_sha256}\n', encoding='utf-8')
+
+def execute_scanner(command, **kwargs):
+    return subprocess.run(command, **kwargs)
+
+def run_scan(target_evidence_dir=None):
+    out = Path(target_evidence_dir) if target_evidence_dir is not None else Path(tempfile.mkdtemp(prefix='m4-gitleaks-evidence-'))
+    out.mkdir(parents=True, exist_ok=True)
+    head, dirty = get_repo_context(); manifest = out / 'run_manifest.json'; txt = out / 'gitleaks-report.txt'
+    reports = []; raw_codes = []; commands = []; attempts = []
+    def persist():
+        m = json.loads(manifest.read_text(encoding='utf-8')); m.update(commands=commands, raw_exit_codes=raw_codes, scope_executions=attempts)
+        manifest.write_text(json.dumps(m, indent=2) + '\n', encoding='utf-8')
+    def fail(reason):
+        generate_evidence(manifest, txt, head, dirty, -1, 'FAIL', reason, 'NONE', 'NONE', -1); persist(); return False
+    if not re.fullmatch('[0-9a-f]{40}', head) or head == '0' * 40 or dirty: return fail('Unknown/shallow/dirty source context')
+    if not install_and_verify_gitleaks(): return fail('Binary integrity/version/platform verification failed')
+    for scope in ('history', 'worktree'):
+        report = out / (str(uuid.uuid4()) + '-' + scope + '.json')
+        cmd = [str(GITLEAKS_BIN), 'detect', '--source', str(ROOT), '--redact', '--report-format', 'json', '--report-path', str(report)]
+        if scope == 'worktree': cmd += ['--no-git']
+        commands.append(cmd)
+        try: p = execute_scanner(cmd, cwd=ROOT, capture_output=True, text=True, timeout=120, check=False)
+        except (OSError, subprocess.SubprocessError) as exc:
+            raw_codes.append(None); attempts.append({'scope': scope, 'command': cmd, 'raw_exit_code': None, 'stderr': str(exc)})
+            return fail('Scanner execution ERROR')
+        valid, msg, count = validate_report(report); raw_codes.append(p.returncode)
+        attempts.append({'scope': scope, 'command': cmd, 'raw_exit_code': p.returncode, 'stdout': p.stdout if isinstance(getattr(p, 'stdout', None), str) else None, 'stderr': p.stderr if isinstance(getattr(p, 'stderr', None), str) else None, 'report_path': report.name, 'report_sha256': get_file_sha256(report)})
+        if p.returncode != 0 or not valid:
+            generate_evidence(manifest, txt, head, dirty, p.returncode, 'FAIL', msg if not valid else 'Scanner execution ERROR', report.name, get_file_sha256(report), count); persist(); return False
+        reports.extend(json.loads(report.read_text(encoding='utf-8')))
+    if get_repo_context() != (head, dirty): return fail('Source changed during scan')
+    combined = out / 'gitleaks-combined.json'; combined.write_text(json.dumps(reports) + '\n', encoding='utf-8')
+    generate_evidence(manifest, txt, head, dirty, 0, 'PASS', 'Clean full history and working tree', combined.name, get_file_sha256(combined), 0)
+    persist(); return True
+
+def main():
+    p = argparse.ArgumentParser(); p.add_argument('--candidate'); p.add_argument('--run-dir'); p.add_argument('--output-dir'); a = p.parse_args()
+    c = None
+    if a.candidate:
+        from m4_result_adapter import load_context
+        if not a.run_dir: p.error('--candidate requires --run-dir')
+        c = load_context(a.candidate, ROOT); out = Path(a.run_dir) / 'source-security'
+    else: out = Path(a.output_dir) if a.output_dir else Path(tempfile.mkdtemp(prefix='m4-source-'))
+    if out.exists() and any(out.iterdir()): p.error('source producer refuses an existing run output')
+    ok = run_scan(out)
+    if c is not None:
+        from m4_result_adapter import emit_control
+        m = json.loads((out / 'run_manifest.json').read_text(encoding='utf-8'))
+        execution = m['execution']; report = out / execution['report_file']
+        source = m['source_context']
+        ok = ok and source['head_commit'] == c['source_commit'] and not source['is_dirty'] and m.get('raw_exit_codes') == [0, 0]
+        actual_exit = m.get('raw_exit_codes', [])[-1] if m.get('raw_exit_codes') else None
+        emit_control(c, a.run_dir, 'GITLEAKS', report if report.is_file() else None, actual_exit, 'PASS' if ok else ('FAIL' if execution['finding_count'] > 0 and actual_exit in (0,1) else 'ERROR'), {'name': 'Gitleaks', 'version': m['scanner']['version']}, [sys.executable, str(Path(__file__).resolve()), '--candidate', str(a.candidate), '--run-dir', str(a.run_dir)], m['reason'], scope=source['scan_scope'], head_commit=source['head_commit'], dirty=source['is_dirty'], shallow=False if source['head_commit'] != 'UNKNOWN' else None, raw_exit_codes=m.get('raw_exit_codes'), scanner_integrity=m['scanner'], repository_root=ROOT)
+    print('SOURCE_EVIDENCE=' + str(out)); return 0 if ok else 1
+
+if __name__ == '__main__': raise SystemExit(main())

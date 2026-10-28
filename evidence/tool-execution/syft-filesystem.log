@@ -1,0 +1,13 @@
+Application:   syft
+Version:       1.33.0
+BuildDate:     2025-09-15T20:38:16Z
+GitCommit:     b87b9191497c2d410b42c05591347d428129fd2a
+GitDescription: v1.33.0
+Platform:      linux/amd64
+GoVersion:     go1.24.7
+Compiler:      gc
+SchemaVersion: 16.0.39
+[0000]  WARN unable to get filesystem cache at /root/.cache/syft: unable to create directory at '/root/.cache/syft': mkdir /root/.cache: read-only file system
+[0000] ERROR failed to fetch latest version: Get "https://toolbox-data.anchore.io/syft/releases/latest/VERSION": dial tcp: lookup toolbox-data.anchore.io on 192.168.65.7:53: dial udp 192.168.65.7:53: connect: network is unreachable
+[0000]  WARN no explicit name and version provided for directory source, deriving artifact ID from the given path (which is not ideal)
+time="2026-10-27T15:47:34+07:00" level=error msg="error waiting for container: unexpected EOF"

@@ -1,0 +1,7 @@
+{
+  "contract": "reference-1",
+  "evidence_kind": "SOURCE_EXECUTION",
+  "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "source_snapshot": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "run_id": "example-fixture"
+}

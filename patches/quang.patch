@@ -1,0 +1,478 @@
+diff --git a/.github/workflows/verify.yml b/.github/workflows/verify.yml
+index b2192ab..c93f1fc 100644
+--- a/.github/workflows/verify.yml
++++ b/.github/workflows/verify.yml
+@@ -1,177 +1,44 @@
+-name: M3 Secure Release Verification
+-
++name: M4 canonical release (proposed contract)
+ on:
+   workflow_dispatch:
+-
+-
++    inputs:
++      run_id:
++        required: true
++        type: string
++      image:
++        required: true
++        type: string
+ jobs:
+-  source-controls:
+-    name: Source Security & Tests
+-    runs-on: ubuntu-latest
+-    services:
+-      order-db:
+-        image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+-        env:
+-          POSTGRES_DB: orders
+-          POSTGRES_USER: orders
+-          POSTGRES_PASSWORD: orders-dev
+-        ports:
+-          - 5432:5432
+-        options: >-
+-          --health-cmd pg_isready
+-          --health-interval 5s
+-          --health-timeout 5s
+-          --health-retries 5
+-
++  local-release:
++    runs-on: [self-hosted, linux, x64, m4-lab]
++    timeout-minutes: 30
+     steps:
+-      - name: Checkout Code
+-        uses: actions/checkout@v4
++      - uses: actions/checkout@v4
+         with:
+           fetch-depth: 0
+-
+-      - name: Set up Python
+-        uses: actions/setup-python@v5
+-        with:
+-          python-version: "3.12"
+-
+-      - name: Gitleaks Secret Scan (Member B)
+-        id: gitleaks
++      - name: Verify operator-provisioned toolchain
++        shell: bash
+         run: |
+           set -euo pipefail
+-          curl -sSL -o gl.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz
+-          echo "ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d  gl.tgz" | sha256sum -c -
+-          tar xzf gl.tgz gitleaks
+-          ./gitleaks detect --source . --redact --verbose
+-          echo "status=PASS" >> $GITHUB_OUTPUT
+-
+-      - name: Initialize DB Schema & Run Unit Tests (Member A)
+-        id: unit
+-        env:
+-          DB_HOST: localhost
+-          DB_PORT: 5432
+-          DB_NAME: orders
+-          DB_USER: orders_app
+-          DB_PASSWORD: orders-app-dev
+-        run: |
+-          pip install -r ma-nguon/order-app/requirements.txt
+-          PGPASSWORD=orders-dev psql -v ON_ERROR_STOP=1 -h localhost -U orders -d orders -f ma-nguon/database/001-init.sql
+-          PGPASSWORD=orders-dev psql -v ON_ERROR_STOP=1 -h localhost -U orders -d orders -f ma-nguon/database/002-runtime-role.sql
+-          PYTHONPATH=ma-nguon/order-app python -m unittest ma-nguon/order-app/tests/test_app.py
+-          echo "status=PASS" >> $GITHUB_OUTPUT
+-
+-      - name: Dependency Policy Check (Member C)
+-        id: dep
+-        run: |
+-          python scripts/dependency_policy.py
+-          echo "status=PASS" >> $GITHUB_OUTPUT
+-
+-    outputs:
+-      gitleaks_status: ${{ steps.gitleaks.outputs.status }}
+-      dependency_status: ${{ steps.dep.outputs.status }}
+-      unit_test_status: ${{ steps.unit.outputs.status }}
+-
+-  build-and-artifact:
+-    name: Build Image & OCI Archive
+-    runs-on: ubuntu-latest
+-    needs: [source-controls]
+-    steps:
+-      - name: Checkout Code
+-        uses: actions/checkout@v4
+-
+-      - name: Set up Python
+-        uses: actions/setup-python@v5
+-        with:
+-          python-version: "3.12"
+-
+-      - name: Install Cosign
+-        uses: sigstore/cosign-installer@v3.5.0
+-
+-      - name: Build Docker Image
+-        run: |
+-          docker build -t css-26c-n08-saigon-continental-order-app:latest ma-nguon/order-app
+-
+-      - name: Export OCI Archive & Verify Cosign
+-        run: |
+-          python scripts/artifact_security.py
+-
+-      - name: Upload OCI Archive Artifact
+-        uses: actions/upload-artifact@v4
+-        with:
+-          name: m3-oci-archive
+-          path: bang-chung/m3/artifact/order-app.tar
+-
+-    outputs:
+-      digest_status: PASS
+-      cosign_status: PASS
+-
+-  sbom-generation:
+-    name: CycloneDX SBOM
+-    runs-on: ubuntu-latest
+-    needs: [build-and-artifact]
+-    outputs:
+-      sbom_status: ${{ steps.sbom.outputs.status }}
+-    steps:
+-      - name: Checkout Code
+-        uses: actions/checkout@v4
+-
+-      - name: Set up Python
+-        uses: actions/setup-python@v5
+-        with:
+-          python-version: "3.12"
+-
+-      - name: Download OCI Archive
+-        uses: actions/download-artifact@v4
+-        with:
+-          name: m3-oci-archive
+-          path: bang-chung/m3/artifact
+-
+-      - name: Install Syft
+-        run: |
+-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sudo sh -s -- -b /usr/local/bin
+-
+-      - name: Generate & Verify CycloneDX SBOM (Member C)
+-        id: sbom
+-        run: |
+-          python scripts/generate_sbom.py
+-          echo "status=PASS" >> $GITHUB_OUTPUT
+-
+-      - name: Upload SBOM Artifact
+-        uses: actions/upload-artifact@v4
+-        with:
+-          name: m3-sbom
+-          path: bang-chung/m3/sbom/
+-
+-  production-gate:
+-    name: Production Gate
+-    runs-on: ubuntu-latest
+-    needs: [source-controls, build-and-artifact, sbom-generation]
+-    if: always()
+-    steps:
+-      - name: Checkout Code
+-        uses: actions/checkout@v4
+-
+-      - name: Set up Python
+-        uses: actions/setup-python@v5
+-        with:
+-          python-version: "3.12"
+-
+-      - name: Run Negative Test Matrix
+-        run: |
+-          python tests/test_production_gate.py
+-
+-      - name: Evaluate Production Gate
++          python -c 'import pytest,jsonschema'
++          command -v docker
++          command -v syft
++          command -v trivy
++          command -v cosign
++      - name: Actual M4 CLI (same candidate and run)
++        shell: bash
+         env:
+-          GITLEAKS_STATUS: ${{ needs.source-controls.outputs.gitleaks_status }}
+-          DEPENDENCY_STATUS: ${{ needs.source-controls.outputs.dependency_status }}
+-          UNIT_TEST_STATUS: ${{ needs.source-controls.outputs.unit_test_status }}
+-          SBOM_STATUS: ${{ needs.sbom-generation.outputs.sbom_status }}
+-          DIGEST_STATUS: ${{ needs.build-and-artifact.outputs.digest_status }}
+-          COSIGN_STATUS: ${{ needs.build-and-artifact.outputs.cosign_status }}
++          RUN_ID: ${{ inputs.run_id }}
++          IMAGE: ${{ inputs.image }}
++          PUBLIC_KEY: ${{ vars.M4_PUBLIC_KEY_PATH }}
++          PRIVATE_KEY: ${{ vars.M4_PRIVATE_KEY_PATH }}
++          TRUST_PIN: ${{ vars.M4_TRUSTED_KEY_SHA256 }}
+         run: |
+-          python scripts/production_gate.py
+-
+-      - name: Upload Evidence
+-        uses: actions/upload-artifact@v4
++          set -euo pipefail
++          test -n "$PUBLIC_KEY" && test -n "$PRIVATE_KEY" && test -n "$TRUST_PIN"
++          python scripts/run_m4_workflow.py --run-dir "$RUNNER_TEMP/m4-runs/$RUN_ID" --source-git-context "https://github.com/${{ github.repository }}.git#${{ github.sha }}:ma-nguon/order-app" --image "$IMAGE" --public-key "$PUBLIC_KEY" --private-key "$PRIVATE_KEY" --trusted-key-sha256 "$TRUST_PIN"
++      - uses: actions/upload-artifact@v4
++        if: always()
+         with:
+-          name: m3-evidence
+-          path: bang-chung/
+\ No newline at end of file
++          name: m4-run-evidence
++          path: ${{ runner.temp }}/m4-runs/
+diff --git a/Makefile b/Makefile
+index f9b676d..969c9d5 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,73 +1,18 @@
+-SHELL := bash
+-.PHONY: up down test-unit test-gate artifact-security release-gate verify
+-
+-up:
+-	@docker compose up -d --build
+-
+-down:
+-	@docker compose down -v
+-
+-test-unit:
+-	@docker compose exec -T order-app python -m unittest discover -s tests -v
+-
+-test-gate:
+-	python tests/test_production_gate.py
+-
+-artifact-security:
+-	python scripts/artifact_security.py
+-
+-release-gate:
+-	python scripts/production_gate.py
+-
+-verify:
+-	@mkdir -p bang-chung
+-	@echo "=== 1. Application unit tests ==="
+-	@docker compose exec -T order-app python -m unittest discover -s tests -v > bang-chung/unit-tests.txt 2>&1; \
+-	status=$$?; \
+-	cat bang-chung/unit-tests.txt; \
+-	if [ $$status -eq 0 ]; then \
+-	  echo "UNIT_TEST_STATUS=PASS" | tee bang-chung/UNIT_TEST_STATUS.txt; \
+-	else \
+-	  echo "UNIT_TEST_STATUS=FAIL" | tee bang-chung/UNIT_TEST_STATUS.txt; \
+-	  exit $$status; \
+-	fi
+-	@echo
+-	@echo "=== 2. Container status & Runtime healthcheck ==="
+-	@docker compose ps
+-	@echo
+-	@echo "=== Waiting for /health ==="
+-	@for i in $$(seq 1 30); do \
+-	  if curl -fsS http://localhost:8081/health >/dev/null 2>&1; then \
+-	    echo "Application is ready."; \
+-	    break; \
+-	  fi; \
+-	  if [ $$i -eq 30 ]; then \
+-	    echo "Application did not become ready."; \
+-	    docker compose logs order-app; \
+-	    exit 1; \
+-	  fi; \
+-	  sleep 1; \
+-	done
+-	@echo
+-	@echo "=== 3. API Smoke tests (/health & /orders) ==="
+-	@curl -fsS http://localhost:8081/health
+-	@echo
+-	@curl -fsS http://localhost:8081/orders
+-	@echo
+-	@{ \
+-	  echo "=== docker compose ps ==="; \
+-	  docker compose ps; \
+-	  echo; \
+-	  echo "=== /health ==="; \
+-	  curl -fsS http://localhost:8081/health; \
+-	  echo; \
+-	  echo; \
+-	  echo "=== /orders ==="; \
+-	  curl -fsS http://localhost:8081/orders; \
+-	  echo; \
+-	} > bang-chung/verification.txt
+-	@echo
+-	@echo "=== 4. Production Gate Negative Integration Tests ==="
+-	python tests/test_production_gate.py
+-	@echo
+-	@echo "==> [SUCCESS] Full M3 Verification passed!"
+\ No newline at end of file
++# PROPOSED_REFERENCE_CHANGE: explicit isolated M4 run; no historical status inputs.
++SHELL := bash
++.PHONY: test-gate verify release-gate artifact-security
++
++test-gate:
++	python -B -m pytest -q -p no:cacheprovider tests/test_production_gate.py tests/test_contract_freeze.py
++
++verify:
++	@test -n "$(RUN_DIR)" || (echo 'RUN_DIR outside checkout required'; exit 2)
++	python -B scripts/run_m4_workflow.py --phase source --run-dir "$(RUN_DIR)"
++
++release-gate:
++	@test -n "$(CANDIDATE)" -a -n "$(RUN_DIR)" -a -n "$(KEY_PIN)" || exit 2
++	python -B scripts/production_gate.py --candidate "$(CANDIDATE)" --run-dir "$(RUN_DIR)" --trusted-key-sha256 "$(KEY_PIN)"
++
++artifact-security:
++	@test -n "$(RUN_DIR)" -a -n "$(IMAGE)" -a -n "$(SOURCE_GIT_CONTEXT)" || exit 2
++	python -B scripts/artifact_security.py --run-dir "$(RUN_DIR)" --image "$(IMAGE)" --source-git-context "$(SOURCE_GIT_CONTEXT)"
+diff --git a/scripts/artifact_security.py b/scripts/artifact_security.py
+index 80c1f02..bf8fa4f 100644
+--- a/scripts/artifact_security.py
++++ b/scripts/artifact_security.py
+@@ -1,4 +1,4 @@
+-﻿"""M4 build-once and explicit signing entrypoint. No archive reuse, default password or literal PASS."""
++"""M4 build-once and explicit signing entrypoint. No archive reuse, default password or literal PASS."""
+ import argparse,json,os,shutil,subprocess,sys
+ from pathlib import Path
+ from m4_result_adapter import read,require,sha,checkout_snapshot,verify_archive,verify_registry
+@@ -12,7 +12,7 @@ def execute(command,root):
+     require(p.returncode==0,'artifact command failed: '+command[0])
+     return p.stdout
+ def main():
+-    p=argparse.ArgumentParser();p.add_argument('--run-dir',required=True);p.add_argument('--image');p.add_argument('--public-key');p.add_argument('--private-key');p.add_argument('--trusted-key-sha256');p.add_argument('--candidate');p.add_argument('--sign',action='store_true');a=p.parse_args()
++    p=argparse.ArgumentParser();p.add_argument('--run-dir',required=True);p.add_argument('--image');p.add_argument('--source-git-context');p.add_argument('--public-key');p.add_argument('--private-key');p.add_argument('--trusted-key-sha256');p.add_argument('--candidate');p.add_argument('--sign',action='store_true');a=p.parse_args()
+     root=Path(a.run_dir).resolve()
+     try:
+         if a.sign:
+@@ -28,23 +28,28 @@ def main():
+         from m4_result_adapter import runtime_allowed
+         require(runtime_allowed(),'BLOCKED_ENVIRONMENT: insufficient measured resources for build')
+         require(not root.is_relative_to(ROOT),'build outputs must be outside scanned source checkout')
+-        require(not root.exists(),'build requires a new run directory')
++        require(not (root/'candidate.json').exists() and not (root/'candidate.tar').exists(),'build refuses artifact reuse')
++        if root.exists():
++            source=load_context(root/'source-context.json');require(source['run_id']==root.name,'build/source run mismatch')
+         repository,tag=a.image.rsplit(':',1);require('/' in repository and tag,'explicit repository:run-tag required')
+         host=repository.split('/')[0];require(host.split(':')[0] in ('localhost','127.0.0.1'),'only isolated local registry supported')
+-        root.mkdir(parents=True)
++        root.mkdir(parents=True,exist_ok=True)
+         commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip();snapshot=checkout_snapshot(ROOT)
+         dirty=subprocess.check_output(['git','status','--porcelain','--','scripts','tests','ma-nguon/order-app','ma-nguon/database','.github','cau-hinh'],cwd=ROOT,text=True)
+         require(not dirty.strip(),'build source is dirty')
+-        execute(['docker','build','--iidfile',str(root/'image-id.txt'),'--label','org.opencontainers.image.revision='+commit,'--label','orderflow.source_snapshot='+snapshot,'-t',a.image,str(ROOT/'ma-nguon/order-app')],root)
+-        execute(['docker','push',a.image],root)
+-        item=json.loads(execute(['docker','image','inspect',a.image],root))[0]
+-        image_id=(root/'image-id.txt').read_text().strip();require(item['Id']==image_id,'build/image config mismatch')
+-        refs=[x for x in item.get('RepoDigests',[]) if x.startswith(repository+'@sha256:')]
+-        require(len(refs)==1,'ambiguous/missing built repository digest');immutable=refs[0]
+-        execute(['docker','save','--output',str(root/'candidate.tar'),immutable],root)
+-        (root/'registry-manifest.json').write_bytes(capture_manifest(immutable))
++        require(a.source_git_context and '#'+commit+':ma-nguon/order-app' in a.source_git_context,'build requires immutable Git context for exact source/provenance; local unpublished checkpoint cannot be substituted')
++        # One BuildKit build, two exports of the same OCI candidate. Verify bytes, never trust a mutable tag.
++        execute(['docker','buildx','build','--platform','linux/amd64','--provenance=mode=max','--metadata-file',str(root/'build-metadata.json'),'--label','org.opencontainers.image.revision='+commit,'--label','orderflow.source_snapshot='+snapshot,'--output','type=registry,name='+a.image+',oci-mediatypes=true','--output','type=oci,dest='+str(root/'candidate.tar')+',oci-mediatypes=true',a.source_git_context],root)
++        metadata=json.loads((root/'build-metadata.json').read_text());index_digest=metadata.get('containerimage.digest');require(isinstance(index_digest,str),'build metadata digest missing')
++        immutable=repository+'@'+index_digest
++        index_bytes=capture_manifest(immutable);index=json.loads(index_bytes)
++        choices=[x for x in index.get('manifests',[]) if x.get('platform',{}).get('os')=='linux' and x.get('platform',{}).get('architecture')=='amd64']
++        require(len(choices)==1,'single linux/amd64 manifest required');platform_digest=choices[0]['digest']
++        platform_bytes=capture_manifest(repository+'@'+platform_digest);platform=json.loads(platform_bytes);image_id=platform['config']['digest']
++        (root/'registry-index.json').write_bytes(index_bytes);(root/'registry-manifest.json').write_bytes(platform_bytes)
++        execute(['docker','pull',immutable],root)
+         if a.public_key:shutil.copyfile(a.public_key,root/'cosign.pub')
+-        c={'contract':'reference-1','run_id':root.name,'source_commit':commit,'source_snapshot':snapshot,'archive_path':'candidate.tar','archive_sha256':sha(root/'candidate.tar'),'manifest_digest':immutable.rsplit('@',1)[1],'platform_manifest_digest':immutable.rsplit('@',1)[1],'artifact_subject':immutable.rsplit('@',1)[1],'config_digest':image_id,'image_reference':immutable,'registry_manifest_path':'registry-manifest.json','public_key_path':'cosign.pub','bundle_path':'candidate.bundle.json','evidence_kind':'BUILD_EXECUTION','trust_status':'PUBLIC_KEY_PROVIDED_NOT_AUTOMATICALLY_APPROVED' if a.public_key else 'NOT_PROVIDED'}
++        c={'contract':'reference-1','run_id':root.name,'source_commit':commit,'source_snapshot':snapshot,'archive_path':'candidate.tar','archive_sha256':sha(root/'candidate.tar'),'registry_index_path':'registry-index.json','manifest_digest':index_digest,'platform_manifest_digest':platform_digest,'artifact_subject':immutable.rsplit('@',1)[1],'config_digest':image_id,'image_reference':immutable,'registry_manifest_path':'registry-manifest.json','public_key_path':'cosign.pub','bundle_path':'candidate.bundle.json','evidence_kind':'BUILD_EXECUTION','trust_status':'PUBLIC_KEY_PROVIDED_NOT_AUTOMATICALLY_APPROVED' if a.public_key else 'NOT_PROVIDED'}
+         verify_archive(root,c);verify_registry(root,c)
+         (root/'candidate.json').write_bytes((json.dumps(c,indent=2)+'\n').encode());return 0
+     except Exception as exc:print('ARTIFACT BLOCKED: '+str(exc));return 2
+diff --git a/scripts/production_gate.py b/scripts/production_gate.py
+index 666d3c8..9426ec0 100644
+--- a/scripts/production_gate.py
++++ b/scripts/production_gate.py
+@@ -23,7 +23,7 @@ def evaluate_gate(context,run_dir,trusted_key_sha256,runner=subprocess.run):
+         try: require(fn() is True,name+' validation failed');states[name+'_STATUS']='PASS'
+         except Exception as exc: reasons[name]=str(exc)
+     for name in ('GITLEAKS','DEPENDENCY','UNIT_TEST','SBOM','VULNERABILITY'):
+-        check(name,lambda name=name:validate_control(run_dir,name,c))
++        check(name,lambda name=name:validate_control(run_dir,name,c).security_approved)
+     def archive_check(): verify_archive(run_dir,c);return True
+     check('DIGEST',archive_check)
+     check('REGISTRY',lambda:verify_registry(run_dir,c))
+diff --git a/scripts/run_m4_workflow.py b/scripts/run_m4_workflow.py
+new file mode 100644
+index 0000000..03f3b2a
+--- /dev/null
++++ b/scripts/run_m4_workflow.py
+@@ -0,0 +1,59 @@
++"""PROPOSED_REFERENCE_CHANGE: one local M4 CLI; actual entrypoints, no PASS substitution."""
++import argparse,json,subprocess,sys
++from pathlib import Path
++from m4_result_adapter import checkout_snapshot,validate_control,read,require,runtime_allowed
++ROOT=Path(__file__).resolve().parents[1]
++
++def main():
++    p=argparse.ArgumentParser();p.add_argument('--run-dir',required=True);p.add_argument('--phase',choices=['source','release'],default='release');p.add_argument('--image');p.add_argument('--source-git-context');p.add_argument('--public-key');p.add_argument('--private-key');p.add_argument('--trusted-key-sha256');p.add_argument('--stage',action='store_true');p.add_argument('--project');p.add_argument('--base-url',default='http://127.0.0.1:18081');p.add_argument('--previous-candidate');p.add_argument('--previous-status');a=p.parse_args()
++    run=Path(a.run_dir).resolve();require(not run.is_relative_to(ROOT),'outputs must be outside checkout');require(not run.exists(),'unique new run required')
++    dirty=subprocess.check_output(['git','status','--porcelain','--untracked-files=all'],cwd=ROOT,text=True);require(not dirty.strip(),'clean source checkout required')
++    run.mkdir(parents=True);summary={'contract_version':'m4-contract-1.0','run_id':run.name,'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),'source_snapshot':checkout_snapshot(ROOT),'stages':{},'decision':'BLOCKED'}
++    context={'contract':'reference-1','evidence_kind':'SOURCE_EXECUTION',**{k:summary[k] for k in ('run_id','source_commit','source_snapshot')}}
++    source=run/'source-context.json';source.write_text(json.dumps(context,indent=2)+'\n',encoding='utf-8')
++    def persist():(run/'run-summary.json').write_text(json.dumps(summary,indent=2)+'\n',encoding='utf-8')
++    def execute(name,args):
++        command=[sys.executable,'-B',*args];r=subprocess.run(command,cwd=ROOT,capture_output=True,text=True,timeout=600)
++        (run/(name+'-stdout.log')).write_text(r.stdout,encoding='utf-8');(run/(name+'-stderr.log')).write_text(r.stderr,encoding='utf-8')
++        summary['stages'][name]={'command':command,'exit_code':r.returncode};persist();return r.returncode
++    # Failure of one source producer must not prevent independent evidence collection.
++    execute('source-security',['scripts/source_security.py','--candidate',str(source),'--run-dir',str(run)])
++    execute('dependency',['scripts/dependency_policy.py','--candidate',str(source),'--run-dir',str(run)])
++    execute('unit',['scripts/m4_result_adapter.py','--unit','--candidate',str(source),'--run-dir',str(run)])
++    approved=True
++    for control in ('GITLEAKS','DEPENDENCY','UNIT_TEST'):
++        try:
++            assessment=validate_control(run,control,context);summary['stages'][control]={'evidence_valid':assessment.evidence_valid,'security_approved':assessment.security_approved,'policy_verdict':assessment.policy_verdict};approved &= assessment.security_approved
++        except Exception as exc:summary['stages'][control]={'evidence_valid':False,'security_approved':False,'reason':str(exc)};approved=False
++    if a.phase=='source':summary['decision']='SOURCE_CONTROLS_APPROVED' if approved else 'BLOCKED';persist();return 0 if approved else 1
++    if not approved:summary['reason']='Source controls not approved; artifact/sign/deploy NOT_RUN';persist();return 1
++    if not runtime_allowed():summary['reason']='BLOCKED_ENVIRONMENT: build/runtime resource guard';persist();return 2
++    require(a.image,'release requires explicit local-registry image')
++    args=['scripts/artifact_security.py','--run-dir',str(run),'--image',a.image]
++    if a.public_key:args+=['--public-key',a.public_key]
++    if a.source_git_context:args+=['--source-git-context',a.source_git_context]
++    if execute('build-once',args):summary['reason']='actual build failed';persist();return 1
++    candidate=run/'candidate.json'
++    if a.private_key and a.trusted_key_sha256:
++        execute('sign-verify',['scripts/artifact_security.py','--sign','--candidate',str(candidate),'--run-dir',str(run),'--private-key',a.private_key,'--trusted-key-sha256',a.trusted_key_sha256])
++    else:summary['stages']['sign-verify']={'status':'NOT_RUN','reason':'operator-approved key and independent pin required'}
++    # Current PR13 verifies the signed archive before scanning; signing is integrity, not release approval.
++    if a.trusted_key_sha256:
++        import os
++        os.environ['M4_TRUSTED_PUBLIC_KEY_SHA256']=a.trusted_key_sha256
++    execute('sbom-vulnerability',['scripts/run_m4_controls.py','--candidate',str(candidate),'--run-dir',str(run)])
++    gate=['scripts/production_gate.py','--candidate',str(candidate),'--run-dir',str(run)]
++    if a.trusted_key_sha256:gate+=['--trusted-key-sha256',a.trusted_key_sha256]
++    if execute('gate',gate):summary['reason']='gate BLOCKED';persist();return 1
++    summary['decision']='REPORTED_PRODUCTION_PASS'
++    if a.stage:
++        require(a.project and a.trusted_key_sha256,'isolated project and trust pin required')
++        args=['--candidate',str(candidate),'--status',str(run/'release-status.json'),'--trusted-key-sha256',a.trusted_key_sha256,'--project',a.project,'--compose',str(ROOT/'docker-compose.staging.yml'),'--base-url',a.base_url]
++        if execute('staging',['scripts/deploy_staging.py',*args]):
++            if a.previous_candidate and a.previous_status:execute('rollback',['scripts/test_rollback.py',*args,'--approved-candidate',a.previous_candidate,'--approved-status',a.previous_status])
++            else:summary['stages']['rollback']={'status':'NOT_RUN','reason':'previous approved candidate not provided'}
++            summary['decision']='DEPLOYMENT_FAILED';persist();return 1
++    persist();return 0
++if __name__=='__main__':
++    try:raise SystemExit(main())
++    except (ValueError,OSError,subprocess.SubprocessError) as exc:print('WORKFLOW_BLOCKED: '+str(exc),file=sys.stderr);raise SystemExit(2)
+diff --git a/scripts/verify_registry.py b/scripts/verify_registry.py
+index 9131187..25bfe57 100644
+--- a/scripts/verify_registry.py
++++ b/scripts/verify_registry.py
+@@ -1,4 +1,4 @@
+-﻿"""M4 registry measurement: fetch bytes by immutable digest, never trust a status string."""
++"""M4 registry measurement: fetch bytes by immutable digest, never trust a status string."""
+ import argparse,json,urllib.request,urllib.parse
+ from pathlib import Path
+ from m4_result_adapter import candidate,require,sha,verify_registry,read
+@@ -7,7 +7,7 @@ def capture_manifest(image_reference):
+     host,name=repository.split('/',1)
+     parsed=urllib.parse.urlsplit('http://'+host)
+     require(parsed.hostname in ('localhost','127.0.0.1'),'only explicit loopback lab registry is supported')
+-    request=urllib.request.Request('http://'+host+'/v2/'+name+'/manifests/'+digest,headers={'Accept':'application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json'})
++    request=urllib.request.Request('http://'+host+'/v2/'+name+'/manifests/'+digest,headers={'Accept':'application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json'})
+     with urllib.request.urlopen(request,timeout=10) as response:
+         require(response.status==200,'registry response status')
+         payload=response.read()
+@@ -18,7 +18,7 @@ def main():
+     p=argparse.ArgumentParser();p.add_argument('--candidate',required=True);p.add_argument('--run-dir',required=True);a=p.parse_args()
+     try:
+         c=candidate(read(a.candidate));root=Path(a.run_dir);require(root.name==c['run_id'],'registry run mismatch')
+-        body=capture_manifest(c['image_reference'])
++        body=capture_manifest(c['image_reference'].rsplit('@',1)[0]+'@'+c['platform_manifest_digest'])
+         target=root/c['registry_manifest_path']
+         if target.exists():require(target.read_bytes()==body,'registry manifest changed')
+         else:target.write_bytes(body)

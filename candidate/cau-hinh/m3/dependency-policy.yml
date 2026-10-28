@@ -1,0 +1,22 @@
+version: 1
+
+manifest:
+  path: ma-nguon/order-app/requirements.txt
+  scope: direct
+
+rules:
+  package_name_normalization: lowercase
+  version_format: exact
+  unapproved_dependency: fail
+
+exceptions:
+  allowed: false
+  review: pull_request
+
+allowlist:
+  - name: flask
+    version: "3.1.2"
+  - name: psycopg
+    version: "3.2.10"
+  - name: psycopg-binary
+    version: "3.2.10"

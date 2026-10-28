@@ -1,0 +1,44 @@
+name: M4 canonical release (proposed contract)
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        required: true
+        type: string
+      image:
+        required: true
+        type: string
+jobs:
+  local-release:
+    runs-on: [self-hosted, linux, x64, m4-lab]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify operator-provisioned toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c 'import pytest,jsonschema'
+          command -v docker
+          command -v syft
+          command -v trivy
+          command -v cosign
+      - name: Actual M4 CLI (same candidate and run)
+        shell: bash
+        env:
+          RUN_ID: ${{ inputs.run_id }}
+          IMAGE: ${{ inputs.image }}
+          PUBLIC_KEY: ${{ vars.M4_PUBLIC_KEY_PATH }}
+          PRIVATE_KEY: ${{ vars.M4_PRIVATE_KEY_PATH }}
+          TRUST_PIN: ${{ vars.M4_TRUSTED_KEY_SHA256 }}
+        run: |
+          set -euo pipefail
+          test -n "$PUBLIC_KEY" && test -n "$PRIVATE_KEY" && test -n "$TRUST_PIN"
+          python scripts/run_m4_workflow.py --run-dir "$RUNNER_TEMP/m4-runs/$RUN_ID" --source-git-context "https://github.com/${{ github.repository }}.git#${{ github.sha }}:ma-nguon/order-app" --image "$IMAGE" --public-key "$PUBLIC_KEY" --private-key "$PRIVATE_KEY" --trusted-key-sha256 "$TRUST_PIN"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m4-run-evidence
+          path: ${{ runner.temp }}/m4-runs/

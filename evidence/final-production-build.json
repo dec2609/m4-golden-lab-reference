@@ -1,0 +1,15 @@
+{
+  "source_sha": "53f18d8b5689a25bc03b647b54eb1a4ba0cd78ef",
+  "command": [
+    "node",
+    "node_modules/vite/bin/vite.js",
+    "build",
+    "--configLoader",
+    "runner",
+    "--outDir",
+    "<USER_HOME>\\Documents\\GitHub\\M4-golden-candidate-lab\\contract-experiment-20261027-s9irmc29\\evidence\\final-frontend-dist"
+  ],
+  "cwd": "<USER_HOME>\\Documents\\GitHub\\M4-golden-candidate-lab\\contract-experiment-20261027-s9irmc29\\candidate\\ma-nguon\\orderflow",
+  "exit": 0,
+  "duration_seconds": 9.943504571914673
+}
